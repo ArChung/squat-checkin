@@ -1,0 +1,16 @@
+{
+  "name": "深蹲俱樂部｜每日打卡簿",
+  "short_name": "深蹲打卡",
+  "description": "四人深蹲俱樂部每日打卡簿",
+  "lang": "zh-Hant-TW",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "background_color": "#f2e9d3",
+  "theme_color": "#f2e9d3",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

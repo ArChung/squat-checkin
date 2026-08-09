@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>深蹲俱樂部｜每日打卡簿</title>
+<meta name="description" content="四人深蹲俱樂部每日打卡簿：深蹲 40 下，男子組加碼伏地挺身 25 下。">
+<meta name="theme-color" content="#f2e9d3">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="深蹲打卡">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Anton&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="ink-rough">
+    <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.6"/>
+  </filter>
+  <filter id="ink-rough-heavy">
+    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3" result="noise"/>
+    <feDisplacementMap in="SourceGraphic" in2="noise" scale="5"/>
+  </filter>
+</svg>
+
+<div id="modeBanner" class="mode-banner hidden" role="status"></div>
+
+<header class="masthead">
+  <p class="club-line"><span class="en">SQUAT CLUB</span><span class="zh">深蹲俱樂部</span><span class="est">同甘共蹲・est. 2026</span></p>
+  <div class="datepage">
+    <div class="date-num-wrap">
+      <span class="date-num" id="dateNum">--</span>
+    </div>
+    <div class="date-meta">
+      <span class="date-month" id="dateMonth"></span>
+      <span class="date-week" id="dateWeek"></span>
+    </div>
+  </div>
+  <p class="goal-strip"><span>今日任務</span>深蹲 40 下・男子組加碼伏地挺身 25 下</p>
+</header>
+
+<div id="allDone" class="all-done hidden" role="status">
+  <span class="fire">🔥</span> 全員達成！蹲得漂亮，明天見！ <span class="fire">🔥</span>
+</div>
+
+<main id="cards" class="cards" aria-label="今日打卡"></main>
+
+<section class="week paper-card">
+  <h2 class="week-title">本週戰績</h2>
+  <div id="weekGrid" class="week-grid" role="table" aria-label="最近七天打卡紀錄"></div>
+</section>
+
+<footer class="footer">
+  <p>憑良心蓋章・蹲好蹲滿</p>
+</footer>
+
+<div id="sheetOverlay" class="sheet-overlay hidden">
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <p class="sheet-title" id="sheetTitle"></p>
+    <button id="sheetConfirm" class="btn btn-primary"></button>
+    <button id="sheetCancel" class="btn btn-ghost"></button>
+  </div>
+</div>
+
+<div id="confetti" class="confetti" aria-hidden="true"></div>
+
+<script src="js/config.js"></script>
+<script src="js/storage.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
