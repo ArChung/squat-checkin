@@ -27,24 +27,44 @@
     mode: "cloud",
     get data() { return data; },
 
+    _es: {},
+
     async init(onChange) {
       notify = onChange;
       data = readJSON(CACHE_KEY); // 先用快取秒開畫面
       if (Object.keys(data.checkins).length || Object.keys(data.messages).length) notify(data);
+      await this._load();
+    },
 
-      const [ck, msg] = await Promise.all(ROOTS.map(async (root) => {
-        const res = await fetch(`${CFG.databaseURL}/${root}.json`);
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return (await res.json()) || {};
+    async _load() {
+      /* 各節點獨立容錯：某節點讀不到（如規則尚未開通）時不拖垮其他節點 */
+      const results = await Promise.all(ROOTS.map(async (root) => {
+        try {
+          const res = await fetch(`${CFG.databaseURL}/${root}.json`);
+          if (!res.ok) throw new Error("HTTP " + res.status);
+          return { root, value: (await res.json()) || {}, ok: true };
+        } catch (e) {
+          return { root, value: data[root] || {}, ok: false };
+        }
       }));
-      data = { checkins: ck, messages: msg };
+      if (!results.some((r) => r.ok)) throw new Error("all roots failed");
+      const next = {};
+      results.forEach((r) => { next[r.root] = r.value; });
+      data = next;
       writeJSON(CACHE_KEY, data);
       notify(data);
-      ROOTS.forEach((root) => this._stream(root));
+      results.forEach((r) => { if (r.ok) this._stream(r.root); });
+    },
+
+    /* App 從背景回前景時重新同步（iOS 會殺掉背景的串流連線） */
+    resync() {
+      return this._load().catch(() => {});
     },
 
     _stream(root) {
+      if (this._es[root]) this._es[root].close();
       const es = new EventSource(`${CFG.databaseURL}/${root}.json`);
+      this._es[root] = es;
       const apply = (e) => {
         const msg = JSON.parse(e.data);
         const parts = msg.path.split("/").filter(Boolean);
@@ -73,7 +93,10 @@
       };
       es.addEventListener("put", apply);
       es.addEventListener("patch", apply);
-      const restart = () => { es.close(); setTimeout(() => this._stream(root), 5000); };
+      const restart = () => {
+        es.close();
+        setTimeout(() => { if (this._es[root] === es) this._stream(root); }, 5000);
+      };
       es.addEventListener("cancel", restart);
       es.onerror = () => { if (es.readyState === EventSource.CLOSED) restart(); };
     },
@@ -95,7 +118,18 @@
     checkin(date, person) { return this._put("checkins", date, person, { ts: { ".sv": "timestamp" } }); },
     uncheck(date, person) { return this._put("checkins", date, person, null); },
     say(date, person, text) { return this._put("messages", date, person, { text: text, ts: { ".sv": "timestamp" } }); },
-    unsay(date, person) { return this._put("messages", date, person, null); }
+    unsay(date, person) { return this._put("messages", date, person, null); },
+
+    /* 推播訂閱（每支手機一筆，掛在成員名下） */
+    async saveSub(person, key, sub) {
+      const res = await fetch(`${CFG.databaseURL}/subs/${person}/${key}.json`, {
+        method: "PUT", body: JSON.stringify(sub)
+      });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+    },
+    async removeSub(person, key) {
+      await fetch(`${CFG.databaseURL}/subs/${person}/${key}.json`, { method: "DELETE" });
+    }
   };
 
   /* ---------- 本機模式（尚未接雲端時的試用） ---------- */
@@ -125,7 +159,10 @@
     checkin(date, person) { return this._set("checkins", date, person, { ts: Date.now() }); },
     uncheck(date, person) { return this._set("checkins", date, person, null); },
     say(date, person, text) { return this._set("messages", date, person, { text: text, ts: Date.now() }); },
-    unsay(date, person) { return this._set("messages", date, person, null); }
+    unsay(date, person) { return this._set("messages", date, person, null); },
+    resync() { return Promise.resolve(); },
+    async saveSub() { throw new Error("local mode"); },
+    async removeSub() {}
   };
 
   window.Store = CFG.databaseURL ? cloud : local;

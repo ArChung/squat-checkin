@@ -1,6 +1,10 @@
-/* 全站設定：接上 Firebase 之後，把 databaseURL 填上即可（唯一要改的地方） */
-window.APP_CONFIG = {
+/* 全站設定（此檔同時供頁面與 Service Worker 使用） */
+globalThis.APP_CONFIG = {
   databaseURL: "https://squat-club-default-rtdb.asia-southeast1.firebasedatabase.app",
+
+  /* 推播通知：公鑰（配對的私鑰在 Cloudflare Worker 裡）；notifyEndpoint 是 Worker 網址，部署後填入 */
+  vapidPublicKey: "BIOecdeddcO6-3z_jsQIeMJPwmxr0s5fTJLZNgaGj8kVFfUw3MLLQPPEU1vW4SG--0rt3LlXzmpgaPpWgAu1vtE",
+  notifyEndpoint: "",
 
   /* pushups: true 的成員要加做伏地挺身（第一週先全部關閉，之後改回 true 即可） */
   members: [

@@ -224,7 +224,9 @@
         title: `<b>${m.name}</b>｜${task}<br>都做完了嗎？`,
         confirmText: "完成，蓋章！",
         cancelText: "還沒啦",
-        onConfirm: () => window.Store.checkin(today, m.id).catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
+        onConfirm: () => window.Store.checkin(today, m.id)
+          .then(() => pokeOthers(m.id))
+          .catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
       });
     }
 
@@ -250,7 +252,7 @@
         placeholder: existing ? "清空送出＝刪掉這句" : "例：今天你們死定了",
         onConfirm: (text) => {
           const act = text
-            ? window.Store.say(today, m.id, text)
+            ? window.Store.say(today, m.id, text).then(() => pokeOthers(m.id))
             : (existing ? window.Store.unsay(today, m.id) : Promise.resolve());
           act.catch(() => flashError("嗆聲送不出去，網路好像不太順，再試一次。"));
         }
@@ -283,6 +285,126 @@
     }
   }, 30000);
 
+  /* ---------- 推播通知 ---------- */
+  const ME_KEY = "squat-club-me";
+  const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+
+  function urlB64ToBytes(s) {
+    const pad = "=".repeat((4 - (s.length % 4)) % 4);
+    const raw = atob((s + pad).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(raw, (c) => c.charCodeAt(0));
+  }
+  function subKey(endpoint) {
+    let h = 5381;
+    for (let i = 0; i < endpoint.length; i++) h = ((h << 5) + h + endpoint.charCodeAt(i)) >>> 0;
+    return "d" + h.toString(16);
+  }
+
+  async function renderNotify() {
+    if (!CFG.vapidPublicKey || window.Store.mode === "local") return;
+    $("#notifySection").classList.remove("hidden");
+    const names = $("#notifyNames");
+    const state = $("#notifyState");
+    const me = localStorage.getItem(ME_KEY);
+
+    let sub = null;
+    if (pushSupported()) {
+      try {
+        const reg = await navigator.serviceWorker.ready;
+        sub = await reg.pushManager.getSubscription();
+      } catch (e) {}
+    } else {
+      $("#notifyHint").textContent = "要收通知，請先把網頁「加入主畫面」，再從主畫面的圖示開啟這裡設定。";
+      names.innerHTML = "";
+      return;
+    }
+
+    if (sub && me) {
+      const m = CFG.members.find((x) => x.id === me);
+      names.innerHTML = "";
+      state.classList.remove("hidden");
+      state.innerHTML = `這支手機已開啟 <b>${m ? m.name : me}</b> 的通知 ✓
+        <button class="notify-off" id="notifyOff">關閉通知</button>`;
+      $("#notifyOff").onclick = disableNotify;
+      $("#notifyHint").classList.add("hidden");
+    } else {
+      state.classList.add("hidden");
+      $("#notifyHint").classList.remove("hidden");
+      names.innerHTML = CFG.members.map((m) =>
+        `<button class="notify-name" style="--accent:${m.accent}" data-notify="${m.id}">我是${m.name}</button>`
+      ).join("");
+    }
+  }
+
+  async function enableNotify(personId) {
+    try {
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") { flashError("通知權限沒開，去 iPhone 設定裡找到這個 App 打開通知。"); return; }
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlB64ToBytes(CFG.vapidPublicKey)
+      });
+      await window.Store.saveSub(personId, subKey(sub.endpoint), sub.toJSON());
+      localStorage.setItem(ME_KEY, personId);
+      renderNotify();
+    } catch (e) {
+      flashError("開啟通知失敗，重新整理後再試一次。");
+    }
+  }
+
+  async function disableNotify() {
+    try {
+      const me = localStorage.getItem(ME_KEY);
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        if (me) window.Store.removeSub(me, subKey(sub.endpoint));
+        await sub.unsubscribe();
+      }
+      localStorage.removeItem(ME_KEY);
+      renderNotify();
+    } catch (e) {}
+  }
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-notify]");
+    if (btn) enableNotify(btn.dataset.notify);
+  });
+
+  /* 打卡／嗆聲成功後，請 Worker 推播給其他人（沒部署 Worker 前靜默略過） */
+  function pokeOthers(actorId) {
+    if (!CFG.notifyEndpoint) return;
+    fetch(`${CFG.notifyEndpoint.replace(/\/$/, "")}/notify`, {
+      method: "POST",
+      body: JSON.stringify({ actor: actorId })
+    }).catch(() => {});
+  }
+
+  /* ---------- 回前景：資料重新同步＋檢查新版本 ---------- */
+  let bootVersion = null;
+  async function fetchVersion() {
+    try { return (await (await fetch("version.json", { cache: "no-store" })).json()).v; }
+    catch (e) { return null; }
+  }
+  fetchVersion().then((v) => { bootVersion = v; });
+
+  let lastVisCheck = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    const nk = dateKey();
+    if (nk !== today) {
+      today = nk; prevDone = {}; firstRender = true; celebrated = false;
+      render(window.Store.data);
+    }
+    if (Date.now() - lastVisCheck < 60000) return;
+    lastVisCheck = Date.now();
+    window.Store.resync();
+    fetchVersion().then((v) => {
+      if (bootVersion && v && v !== bootVersion) location.reload();
+    });
+  });
+
   /* ---------- 啟動 ---------- */
   renderMasthead();
   if (window.Store.mode === "local") showLocalBanner();
@@ -292,7 +414,9 @@
     render(window.Store.data);
   });
 
-  if ("serviceWorker" in navigator && location.protocol === "https:") {
-    navigator.serviceWorker.register("sw.js");
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").then(renderNotify).catch(() => {});
+  } else {
+    renderNotify();
   }
 })();

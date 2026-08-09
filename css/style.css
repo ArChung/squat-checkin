@@ -473,6 +473,53 @@ body::before {
 }
 .dot.today-col { opacity: .9; border-color: var(--seal); }
 
+/* ============ 打卡通知 ============ */
+.notify-hint {
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+.notify-names {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.notify-name {
+  font-family: var(--font-zh);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  padding: 12px 8px;
+  background: var(--accent, var(--ink));
+  color: var(--paper-card);
+  border: 2px solid var(--ink);
+  border-radius: 10px;
+  box-shadow: 2px 2px 0 var(--ink);
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.notify-name:active { transform: translate(2px, 2px); box-shadow: none; }
+.notify-state {
+  font-size: 15px;
+  text-align: center;
+  line-height: 1.7;
+}
+.notify-state b { color: var(--seal); }
+.notify-off {
+  display: inline-block;
+  font-family: var(--font-zh);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+  background: none;
+  border: none;
+  margin-left: 10px;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
 /* ============ 頁尾 ============ */
 .footer {
   margin-top: 26px;
