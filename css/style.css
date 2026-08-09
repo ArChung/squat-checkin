@@ -147,7 +147,7 @@ body::before {
   transform: rotate(-.6deg);
   box-shadow: 3px 3px 0 rgba(38, 33, 25, .25);
 }
-.goal-strip span {
+.goal-strip span:first-child {
   color: var(--gold);
   font-weight: 700;
   margin-right: 10px;

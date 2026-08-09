@@ -64,6 +64,9 @@
     $("#dateNum").textContent = p.day;
     $("#dateMonth").textContent = MONTH_CH[p.m - 1];
     $("#dateWeek").textContent = "星期" + WEEK_CH[p.wd];
+    const hasPushups = CFG.members.some((m) => m.pushups);
+    $("#goalText").textContent = `深蹲 ${CFG.squats} 下` +
+      (hasPushups ? `・男子組加碼伏地挺身 ${CFG.pushupsCount} 下` : "");
   }
 
   /* ---------- 今日卡片 ---------- */
