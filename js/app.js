@@ -100,9 +100,7 @@
             <span class="chip">深蹲<b>${CFG.squats}</b></span>
             ${m.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
           </div>
-          <div class="status ${done ? "done" : ""}">${
-            done ? `已完成 <b>${fmtTime.format(new Date(rec.ts))}</b>` : "尚未打卡"
-          }</div>
+          <div class="status ${done ? "done" : ""}">${done ? "已完成" : "尚未打卡"}</div>
           <button class="bubble ${msg ? "" : "bubble-empty"}" data-say="${m.id}"
                   aria-label="${msg ? "編輯" + m.name + "的嗆聲" : "幫" + m.name + "嗆一句"}">${
             msg ? `${esc(msg.text)}<span class="bubble-ts">${fmtTime.format(new Date(msg.ts))}</span>` : "嗆一句⋯"
@@ -114,7 +112,8 @@
           ${done
             ? sealSVG(justStamped) + (justStamped ? splats() : "")
             : `<span class="stamp-empty"><span class="tap">蓋章</span><span class="hint">按此打卡</span></span>`}
-        </button>`;
+        </button>
+        ${done ? `<span class="done-time">${fmtTime.format(new Date(rec.ts))}</span>` : ""}`;
       wrap.appendChild(card);
 
       if (justStamped) {

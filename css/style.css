@@ -368,6 +368,19 @@ body::before {
 }
 .seal.stamp-in { animation: stampIn .42s cubic-bezier(.18, 1.5, .4, 1) backwards; }
 
+/* 卡片右下角的完成時間 */
+.done-time {
+  position: absolute;
+  right: 10px;
+  bottom: 7px;
+  font-family: var(--font-num);
+  font-size: 12px;
+  letter-spacing: .08em;
+  color: var(--seal);
+  opacity: .85;
+  pointer-events: none;
+}
+
 /* 墨點噴濺 */
 .splat {
   position: absolute;
