@@ -12,5 +12,11 @@ window.APP_CONFIG = {
 
   squats: 40,
   pushupsCount: 25,
-  timeZone: "Asia/Taipei"
+  timeZone: "Asia/Taipei",
+
+  /* 換日時間：凌晨 3 點才算新的一天（過 12 點才運動也算前一天） */
+  dayStartHour: 3,
+
+  /* 嗆聲留言字數上限 */
+  maxSayLength: 40
 };

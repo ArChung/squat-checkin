@@ -5,12 +5,15 @@
 
   const WEEK_CH = ["日", "一", "二", "三", "四", "五", "六"];
   const MONTH_CH = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
+  const DAY_SHIFT_MS = CFG.dayStartHour * 3600000;
 
-  /* ---------- 台北時區日期工具 ---------- */
+  /* ---------- 台北時區日期工具（換日點：凌晨 dayStartHour 點） ---------- */
   const fmtKey = new Intl.DateTimeFormat("en-CA", { timeZone: CFG.timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
   const fmtTime = new Intl.DateTimeFormat("zh-TW", { timeZone: CFG.timeZone, hour: "2-digit", minute: "2-digit", hour12: false });
+  const fmtHour = new Intl.DateTimeFormat("en-US", { timeZone: CFG.timeZone, hour: "numeric", hour12: false });
 
-  function dateKey(d) { return fmtKey.format(d || new Date()); }
+  function dateKey(d) { return fmtKey.format(new Date((d ? d.getTime() : Date.now()) - DAY_SHIFT_MS)); }
+  function inLateNight() { return Number(fmtHour.format(new Date())) % 24 < CFG.dayStartHour; }
 
   function keyParts(key) {
     const [y, m, day] = key.split("-").map(Number);
@@ -24,6 +27,10 @@
     const now = Date.now();
     for (let i = n - 1; i >= 0; i--) out.push(dateKey(new Date(now - i * 86400000)));
     return out;
+  }
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
   /* ---------- 狀態 ---------- */
@@ -64,6 +71,7 @@
     $("#dateNum").textContent = p.day;
     $("#dateMonth").textContent = MONTH_CH[p.m - 1];
     $("#dateWeek").textContent = "星期" + WEEK_CH[p.wd];
+    $("#lateNote").classList.toggle("hidden", !inLateNight());
     const hasPushups = CFG.members.some((m) => m.pushups);
     $("#goalText").textContent = `深蹲 ${CFG.squats} 下` +
       (hasPushups ? `・男子組加碼伏地挺身 ${CFG.pushupsCount} 下` : "");
@@ -72,13 +80,15 @@
   /* ---------- 今日卡片 ---------- */
   function renderCards(data) {
     const wrap = $("#cards");
-    const todayData = data[today] || {};
+    const todayCk = data.checkins[today] || {};
+    const todayMsg = data.messages[today] || {};
     wrap.innerHTML = "";
 
     CFG.members.forEach((m) => {
-      const rec = todayData[m.id];
+      const rec = todayCk[m.id];
       const done = !!rec;
       const justStamped = !firstRender && done && !prevDone[m.id];
+      const msg = todayMsg[m.id];
 
       const card = document.createElement("article");
       card.className = "card";
@@ -93,6 +103,10 @@
           <div class="status ${done ? "done" : ""}">${
             done ? `已完成 <b>${fmtTime.format(new Date(rec.ts))}</b>` : "尚未打卡"
           }</div>
+          <button class="bubble ${msg ? "" : "bubble-empty"}" data-say="${m.id}"
+                  aria-label="${msg ? "編輯" + m.name + "的嗆聲" : "幫" + m.name + "嗆一句"}">${
+            msg ? `${esc(msg.text)}<span class="bubble-ts">${fmtTime.format(new Date(msg.ts))}</span>` : "嗆一句⋯"
+          }</button>
           ${done ? `<button class="undo" data-undo="${m.id}">蓋錯了？取消打卡</button>` : ""}
         </div>
         <button class="stamp-zone ${justStamped ? "splashing" : ""}" data-stamp="${m.id}"
@@ -123,7 +137,7 @@
     CFG.members.forEach((m) => {
       html += `<span class="wk-name" style="--accent:${m.accent}"><i></i>${m.name}</span>`;
       days.forEach((k) => {
-        const on = !!(data[k] && data[k][m.id]);
+        const on = !!(data.checkins[k] && data.checkins[k][m.id]);
         html += `<span class="dot ${on ? "on" : ""} ${k === today && !on ? "today-col" : ""}"></span>`;
       });
     });
@@ -132,8 +146,8 @@
 
   /* ---------- 全員達成 ---------- */
   function renderAllDone(data) {
-    const todayData = data[today] || {};
-    const count = CFG.members.filter((m) => todayData[m.id]).length;
+    const todayCk = data.checkins[today] || {};
+    const count = CFG.members.filter((m) => todayCk[m.id]).length;
     const all = count === CFG.members.length;
     $("#allDone").classList.toggle("hidden", !all);
     if (all && !firstRender && !celebrated) { celebrated = true; confetti(); }
@@ -152,12 +166,24 @@
   }
 
   /* ---------- 底部確認面板 ---------- */
-  function openSheet(title, confirmText, cancelText, onConfirm) {
-    $("#sheetTitle").innerHTML = title;
-    $("#sheetConfirm").textContent = confirmText;
-    $("#sheetCancel").textContent = cancelText;
+  function openSheet(opts) {
+    $("#sheetTitle").innerHTML = opts.title;
+    $("#sheetConfirm").textContent = opts.confirmText;
+    $("#sheetCancel").textContent = opts.cancelText;
+    const input = $("#sheetInput");
+    input.classList.toggle("hidden", !opts.withInput);
+    if (opts.withInput) {
+      input.value = opts.inputValue || "";
+      input.placeholder = opts.placeholder || "";
+      input.maxLength = CFG.maxSayLength;
+    }
     $("#sheetOverlay").classList.remove("hidden");
-    $("#sheetConfirm").onclick = () => { closeSheet(); onConfirm(); };
+    if (opts.withInput) setTimeout(() => input.focus(), 60);
+    $("#sheetConfirm").onclick = () => {
+      closeSheet();
+      opts.onConfirm(opts.withInput ? input.value.trim() : undefined);
+    };
+    input.onkeydown = (e) => { if (e.key === "Enter") $("#sheetConfirm").click(); };
   }
   function closeSheet() { $("#sheetOverlay").classList.add("hidden"); }
 
@@ -185,28 +211,50 @@
   document.addEventListener("click", (e) => {
     const stampBtn = e.target.closest("[data-stamp]");
     const undoBtn = e.target.closest("[data-undo]");
+    const sayBtn = e.target.closest("[data-say]");
 
     if (stampBtn) {
       const m = CFG.members.find((x) => x.id === stampBtn.dataset.stamp);
-      const todayData = window.Store.data[today] || {};
-      if (todayData[m.id]) return; // 已蓋章
+      const todayCk = window.Store.data.checkins[today] || {};
+      if (todayCk[m.id]) return; // 已蓋章
       const task = m.pushups
         ? `深蹲 ${CFG.squats} 下＋伏地挺身 ${CFG.pushupsCount} 下`
         : `深蹲 ${CFG.squats} 下`;
-      openSheet(
-        `<b>${m.name}</b>｜${task}<br>都做完了嗎？`,
-        "完成，蓋章！", "還沒啦",
-        () => window.Store.checkin(today, m.id).catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
-      );
+      openSheet({
+        title: `<b>${m.name}</b>｜${task}<br>都做完了嗎？`,
+        confirmText: "完成，蓋章！",
+        cancelText: "還沒啦",
+        onConfirm: () => window.Store.checkin(today, m.id).catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
+      });
     }
 
     if (undoBtn) {
       const m = CFG.members.find((x) => x.id === undoBtn.dataset.undo);
-      openSheet(
-        `要取消 <b>${m.name}</b> 今天的打卡嗎？`,
-        "取消打卡", "不要，保留",
-        () => window.Store.uncheck(today, m.id).catch(() => flashError("取消失敗，網路好像不太順，再試一次。"))
-      );
+      openSheet({
+        title: `要取消 <b>${m.name}</b> 今天的打卡嗎？`,
+        confirmText: "取消打卡",
+        cancelText: "不要，保留",
+        onConfirm: () => window.Store.uncheck(today, m.id).catch(() => flashError("取消失敗，網路好像不太順，再試一次。"))
+      });
+    }
+
+    if (sayBtn) {
+      const m = CFG.members.find((x) => x.id === sayBtn.dataset.say);
+      const existing = (window.Store.data.messages[today] || {})[m.id];
+      openSheet({
+        title: `<b>${m.name}</b> 的今日嗆聲`,
+        confirmText: "送出！",
+        cancelText: "算了",
+        withInput: true,
+        inputValue: existing ? existing.text : "",
+        placeholder: existing ? "清空送出＝刪掉這句" : "例：今天你們死定了",
+        onConfirm: (text) => {
+          const act = text
+            ? window.Store.say(today, m.id, text)
+            : (existing ? window.Store.unsay(today, m.id) : Promise.resolve());
+          act.catch(() => flashError("嗆聲送不出去，網路好像不太順，再試一次。"));
+        }
+      });
     }
   });
   $("#sheetCancel").addEventListener("click", closeSheet);
@@ -221,7 +269,7 @@
     firstRender = false;
   }
 
-  /* 跨日自動翻頁 */
+  /* 跨日自動翻頁（凌晨三點）＋深夜提示更新 */
   setInterval(() => {
     const now = dateKey();
     if (now !== today) {
@@ -230,6 +278,8 @@
       firstRender = true;
       celebrated = false;
       render(window.Store.data);
+    } else {
+      $("#lateNote").classList.toggle("hidden", !inLateNight());
     }
   }, 30000);
 

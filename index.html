@@ -44,6 +44,7 @@
       <span class="date-week" id="dateWeek"></span>
     </div>
   </div>
+  <p class="late-note hidden" id="lateNote">深夜場進行中：凌晨 3 點才換日</p>
   <p class="goal-strip"><span>今日任務</span><span id="goalText"></span></p>
 </header>
 
@@ -65,6 +66,7 @@
 <div id="sheetOverlay" class="sheet-overlay hidden">
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
     <p class="sheet-title" id="sheetTitle"></p>
+    <input id="sheetInput" class="sheet-input hidden" type="text" maxlength="40" autocomplete="off" enterkeyhint="send">
     <button id="sheetConfirm" class="btn btn-primary"></button>
     <button id="sheetCancel" class="btn btn-ghost"></button>
   </div>
