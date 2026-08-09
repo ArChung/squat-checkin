@@ -4,7 +4,7 @@ globalThis.APP_CONFIG = {
 
   /* 推播通知：公鑰（配對的私鑰在 Cloudflare Worker 裡）；notifyEndpoint 是 Worker 網址，部署後填入 */
   vapidPublicKey: "BIOecdeddcO6-3z_jsQIeMJPwmxr0s5fTJLZNgaGj8kVFfUw3MLLQPPEU1vW4SG--0rt3LlXzmpgaPpWgAu1vtE",
-  notifyEndpoint: "",
+  notifyEndpoint: "https://squat-notify.until5000.workers.dev",
 
   /* pushups: true 的成員要加做伏地挺身（第一週先全部關閉，之後改回 true 即可） */
   members: [
