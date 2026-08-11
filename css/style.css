@@ -163,6 +163,67 @@ body::before {
   border-right: 1px solid rgba(251, 246, 232, .4);
 }
 
+/* ============ 八週挑戰進度 ============ */
+.challenge {
+  margin-top: 12px;
+  padding: 9px 12px 11px;
+  background: var(--paper-card);
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 rgba(38, 33, 25, .22);
+}
+.ch-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.ch-label {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .24em;
+  color: var(--ink);
+}
+.ch-day { font-size: 13.5px; color: var(--ink-soft); letter-spacing: .06em; }
+.ch-day b {
+  font-family: var(--font-num);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--seal);
+  margin: 0 1px;
+}
+.ch-finish { color: var(--seal-deep); font-weight: 700; letter-spacing: .1em; }
+.ch-boxes {
+  display: flex;
+  gap: 6px;
+}
+.ch-boxes i {
+  flex: 1;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-num);
+  font-style: normal;
+  font-size: 13px;
+  border: 2px dashed var(--dash);
+  border-radius: 7px;
+  color: var(--dash);
+}
+.ch-boxes i.past {
+  border: 2px solid var(--seal-deep);
+  background: var(--seal);
+  color: #fff3e2;
+  transform: rotate(-2deg);
+}
+.ch-boxes i.now {
+  border: 2px solid var(--seal);
+  color: var(--seal);
+  font-weight: 700;
+  background: rgba(200, 65, 47, .08);
+  box-shadow: 0 0 0 2px rgba(200, 65, 47, .15);
+}
+
 /* ============ 全員達成 ============ */
 .all-done {
   margin: 14px 0 -2px;
@@ -433,12 +494,27 @@ body::before {
 
 .week-grid {
   display: grid;
-  grid-template-columns: 52px repeat(7, 1fr);
+  grid-template-columns: 56px repeat(7, 1fr);
   row-gap: 10px;
   align-items: center;
-  justify-items: center;
+  justify-items: stretch;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 4px;
 }
-.wk-corner { justify-self: start; }
+.wk-corner {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--paper-card);
+}
+.dot-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+}
 .wk-day {
   display: flex;
   flex-direction: column;
@@ -461,11 +537,17 @@ body::before {
 .wk-day.today b { color: var(--seal); }
 
 .wk-name {
-  justify-self: start;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--paper-card);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: .1em;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding-right: 6px;
 }
 .wk-name i {
   display: inline-block;

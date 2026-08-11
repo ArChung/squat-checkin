@@ -24,6 +24,9 @@ globalThis.APP_CONFIG = {
   /* 換日時間：凌晨 3 點才算新的一天（過 12 點才運動也算前一天） */
   dayStartHour: 3,
 
+  /* 挑戰期間：從 startDate 起算 weeks 週 */
+  challenge: { startDate: "2026-08-09", weeks: 8 },
+
   /* 嗆聲留言字數上限 */
   maxSayLength: 40
 };

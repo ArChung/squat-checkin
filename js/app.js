@@ -31,6 +31,11 @@
     return out;
   }
 
+  function daysBetween(fromKey, toKey) {
+    const f = keyParts(fromKey), t = keyParts(toKey);
+    return Math.round((Date.UTC(t.y, t.m - 1, t.day) - Date.UTC(f.y, f.m - 1, f.day)) / 86400000);
+  }
+
   function esc(s) {
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
@@ -109,6 +114,40 @@
     const hasPushups = CFG.members.some((m) => m.pushups);
     $("#goalText").textContent = `深蹲 ${CFG.squats} 下` +
       (hasPushups ? `・男子組加碼伏地挺身 ${CFG.pushupsCount} 下` : "");
+    renderChallenge();
+  }
+
+  /* ---------- 八週挑戰進度 ---------- */
+  function renderChallenge() {
+    const el = $("#challengeStrip");
+    const c = CFG.challenge;
+    if (!c || !c.startDate) { el.classList.add("hidden"); return; }
+    el.classList.remove("hidden");
+
+    const day = daysBetween(c.startDate, today) + 1;
+    const total = c.weeks * 7;
+    const label = `${["", "一", "二", "三", "四", "五", "六", "七", "八", "九", "十"][c.weeks] || c.weeks}週挑戰`;
+
+    if (day < 1) {
+      el.innerHTML = `<div class="ch-head"><span class="ch-label">${label}</span><span class="ch-day">還有 <b>${1 - day}</b> 天開跑</span></div>`;
+      return;
+    }
+    if (day > total) {
+      el.innerHTML = `<div class="ch-head"><span class="ch-label">${label}</span><span class="ch-day ch-finish">全程完賽！🏆</span></div>`;
+      return;
+    }
+    const week = Math.ceil(day / 7);
+    const dayInWeek = ((day - 1) % 7) + 1;
+    let boxes = "";
+    for (let w = 1; w <= c.weeks; w++) {
+      boxes += `<i class="${w < week ? "past" : (w === week ? "now" : "")}">${w}</i>`;
+    }
+    el.innerHTML = `
+      <div class="ch-head">
+        <span class="ch-label">${label}</span>
+        <span class="ch-day">第<b>${week}</b>週・第<b>${dayInWeek}</b>天</span>
+      </div>
+      <div class="ch-boxes">${boxes}</div>`;
   }
 
   /* ---------- 卡片（創始成員＋我自己的粉絲卡） ---------- */
@@ -199,10 +238,28 @@
     }).join("");
   }
 
-  /* ---------- 本週戰績（創始成員） ---------- */
+  /* ---------- 戰績格（前七天固定一週，之後變成可滑動的完整挑戰紀錄） ---------- */
+  let lastWeekCols = 0;
+
+  function challengeDays() {
+    const c = CFG.challenge;
+    if (!c || !c.startDate) return lastNDays(7);
+    const started = daysBetween(c.startDate, today) + 1;
+    if (started < 1 || started <= 7) return lastNDays(7);
+    const lastDay = Math.min(started, c.weeks * 7); // 挑戰結束後凍結在最後一天
+    const base = keyParts(c.startDate);
+    const out = [];
+    for (let i = 0; i < lastDay; i++) {
+      out.push(fmtKey.format(new Date(Date.UTC(base.y, base.m - 1, base.day + i, 12))));
+    }
+    return out;
+  }
+
   function renderWeek(data) {
     const grid = $("#weekGrid");
-    const days = lastNDays(7);
+    const days = challengeDays();
+    $("#weekTitle").textContent = days.length > 7 ? "挑戰戰績" : "本週戰績";
+    grid.style.gridTemplateColumns = `56px repeat(${days.length}, minmax(40px, 1fr))`;
     let html = `<span class="wk-corner"></span>`;
     days.forEach((k) => {
       const p = keyParts(k);
@@ -217,10 +274,14 @@
       html += `<span class="wk-name" style="--accent:${m.accent}"><i></i>${esc(m.name)}</span>`;
       days.forEach((k) => {
         const on = !!(data.checkins[k] && data.checkins[k][m.id]);
-        html += `<span class="dot ${on ? "on" : ""} ${k === today && !on ? "today-col" : ""}"></span>`;
+        html += `<span class="dot-cell"><span class="dot ${on ? "on" : ""} ${k === today && !on ? "today-col" : ""}"></span></span>`;
       });
     });
     grid.innerHTML = html;
+    if (days.length !== lastWeekCols) {
+      lastWeekCols = days.length;
+      grid.scrollLeft = grid.scrollWidth; // 自動停在最新一天
+    }
   }
 
   /* ---------- 全員達成（創始成員） ---------- */

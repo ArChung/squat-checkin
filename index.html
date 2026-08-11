@@ -46,6 +46,7 @@
   </div>
   <p class="late-note hidden" id="lateNote">深夜場進行中：凌晨 3 點才換日</p>
   <p class="goal-strip"><span>今日任務</span><span id="goalText"></span></p>
+  <div class="challenge hidden" id="challengeStrip"></div>
 </header>
 
 <div id="allDone" class="all-done hidden" role="status">
@@ -55,8 +56,8 @@
 <main id="cards" class="cards" aria-label="今日打卡"></main>
 
 <section class="week paper-card">
-  <h2 class="week-title">本週戰績</h2>
-  <div id="weekGrid" class="week-grid" role="table" aria-label="最近七天打卡紀錄"></div>
+  <h2 class="week-title" id="weekTitle">本週戰績</h2>
+  <div id="weekGrid" class="week-grid" role="table" aria-label="打卡紀錄"></div>
 </section>
 
 <button class="join-btn hidden" id="joinBtn">＋ 我也要加入一起蹲</button>
