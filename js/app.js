@@ -166,15 +166,15 @@
       <article class="card" data-card="${id}" style="--accent:${accent}">
         <div class="name-rail">${esc(name)}</div>
         <div class="card-main">
+          <div class="req">
+            <span class="chip">深蹲<b>${CFG.squats}</b></span>
+            ${opts.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
+          </div>
           ${opts.withBubble ? `
           <button class="bubble ${msg ? "" : "bubble-empty"} ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
                   aria-label="${msg ? "編輯" + esc(name) + "的嗆聲" : "幫" + esc(name) + "嗆一句"}">${
             msg ? `${esc(msg.text)}<span class="bubble-ts">${fmtTime.format(new Date(msg.ts))}</span>` : "嗆一句⋯"
           }</button>` : ""}
-          <div class="req">
-            <span class="chip">深蹲<b>${CFG.squats}</b></span>
-            ${opts.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
-          </div>
           ${done ? "" : `<div class="status">尚未打卡</div>`}
           ${showClaim ? `<button class="undo" data-claim="${id}">認領這張卡（綁定這支手機）</button>` : ""}
           ${showReset ? `<button class="undo" data-reset="${id}">團主：重設綁定</button>` : ""}

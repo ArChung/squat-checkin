@@ -103,9 +103,9 @@ body::before {
 .datepage {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 14px;
-  padding: 12px 0 4px;
+  padding: 20px 10px 14px 0;
 }
 .date-num-wrap { position: relative; line-height: 1; }
 .date-num-wrap::after {
@@ -252,6 +252,7 @@ body::before {
   position: relative;
   display: flex;
   align-items: stretch;
+  min-height: 134px;
   background: var(--paper-card);
   border: 2px solid var(--ink);
   border-radius: 14px;
@@ -397,7 +398,7 @@ body::before {
   border: none;
   cursor: pointer;
   position: relative;
-  padding: 10px;
+  padding: 8px 10px 26px; /* 底部留一條時間蓋章帶，避免與印章重疊 */
   touch-action: manipulation;
   -webkit-user-select: none;
   user-select: none;
