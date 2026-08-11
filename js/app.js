@@ -173,7 +173,7 @@
           ${opts.withBubble ? `
           <button class="bubble ${msg ? "" : "bubble-empty"} ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
                   aria-label="${msg ? "編輯" + esc(name) + "的嗆聲" : "幫" + esc(name) + "嗆一句"}">${
-            msg ? `${esc(msg.text)}<span class="bubble-ts">${fmtTime.format(new Date(msg.ts))}</span>` : "嗆一句⋯"
+            msg ? esc(msg.text) : "嗆一句⋯"
           }</button>` : ""}
           ${done ? "" : `<div class="status">尚未打卡</div>`}
           ${showClaim ? `<button class="undo" data-claim="${id}">認領這張卡（綁定這支手機）</button>` : ""}
