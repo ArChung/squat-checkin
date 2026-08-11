@@ -59,6 +59,13 @@
   <div id="weekGrid" class="week-grid" role="table" aria-label="最近七天打卡紀錄"></div>
 </section>
 
+<button class="join-btn hidden" id="joinBtn">＋ 我也要加入一起蹲</button>
+
+<section class="paper-card fans hidden" id="fansSection">
+  <h2 class="week-title">一起蹲的鄉民</h2>
+  <div id="fanRows" class="fan-rows"></div>
+</section>
+
 <section class="paper-card notify hidden" id="notifySection">
   <h2 class="week-title">打卡通知</h2>
   <p class="notify-hint" id="notifyHint">點自己的名字，這支手機就會收到大家的打卡與嗆聲通知</p>
@@ -82,6 +89,7 @@
 <div id="confetti" class="confetti" aria-hidden="true"></div>
 
 <script src="js/config.js"></script>
+<script src="js/auth.js"></script>
 <script src="js/storage.js"></script>
 <script src="js/app.js"></script>
 </body>

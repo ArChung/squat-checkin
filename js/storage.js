@@ -1,59 +1,100 @@
-/* 儲存層（可抽換）：有 databaseURL 就走 Firebase RTDB REST + 即時串流，沒有就退回本機 localStorage。
+/* 儲存層（可抽換）：有 databaseURL 就走 Firebase RTDB REST + 單一即時串流，沒有就退回本機 localStorage。
    資料形狀：{
-     checkins: { "2026-08-09": { "azhong": { ts: 1786240000000 } } },
-     messages: { "2026-08-09": { "azhong": { text: "今天你們死定了", ts: 1786240000000 } } }
+     checkins: { "2026-08-09": { "azhong": { ts } } },
+     messages: { "2026-08-09": { "azhong": { text, ts } } },
+     members:  { "azhong": { name, role: "founder"|"fan", claimedBy: <uid>, ts } },
+     subs:     { "azhong": { "<device>": { endpoint, keys } } }
    } */
 (function () {
-  const CFG = window.APP_CONFIG;
-  const CACHE_KEY = "squat-club-cache-v2";
+  const CFG = globalThis.APP_CONFIG;
+  const CACHE_KEY = "squat-club-cache-v3";
   const LOCAL_KEY = "squat-club-local-v2";
-  const ROOTS = ["checkins", "messages"];
+  const ROOTS = ["checkins", "messages", "members", "subs"];
 
-  let data = { checkins: {}, messages: {} };
+  let data = empty();
   let notify = function () {};
 
+  function empty() { return { checkins: {}, messages: {}, members: {}, subs: {} }; }
+  function pick(obj) {
+    const out = empty();
+    if (obj) ROOTS.forEach((r) => { if (obj[r]) out[r] = obj[r]; });
+    return out;
+  }
   function readJSON(key) {
-    try {
-      const obj = JSON.parse(localStorage.getItem(key)) || {};
-      return { checkins: obj.checkins || {}, messages: obj.messages || {} };
-    } catch (e) { return { checkins: {}, messages: {} }; }
+    try { return pick(JSON.parse(localStorage.getItem(key))); } catch (e) { return empty(); }
   }
   function writeJSON(key, obj) {
     try { localStorage.setItem(key, JSON.stringify(obj)); } catch (e) {}
   }
 
-  /* ---------- Firebase RTDB（REST + Server-Sent Events） ---------- */
+  /* 寫入時自動帶上裝置身分；權杖過期就換新的重試一次 */
+  async function authedFetch(path, opts, retried) {
+    let url = CFG.databaseURL + path;
+    if (globalThis.DeviceAuth && DeviceAuth.enabled()) {
+      const t = await DeviceAuth.token(retried).catch(() => null);
+      if (t) url += (url.includes("?") ? "&" : "?") + "auth=" + t;
+    }
+    const res = await fetch(url, opts);
+    if ((res.status === 401 || res.status === 403) && !retried && globalThis.DeviceAuth && DeviceAuth.enabled()) {
+      return authedFetch(path, opts, true);
+    }
+    return res;
+  }
+
+  /* ---------- Firebase RTDB（REST + 單一 Server-Sent Events 串流） ---------- */
   const cloud = {
     mode: "cloud",
     get data() { return data; },
-
-    _es: {},
+    _gen: 0,
+    _sources: [],
 
     async init(onChange) {
       notify = onChange;
       data = readJSON(CACHE_KEY); // 先用快取秒開畫面
-      if (Object.keys(data.checkins).length || Object.keys(data.messages).length) notify(data);
+      if (Object.keys(data.checkins).length || Object.keys(data.members).length) notify(data);
       await this._load();
     },
 
+    _closeStreams() {
+      this._sources.forEach((es) => es.close());
+      this._sources = [];
+    },
+
     async _load() {
-      /* 各節點獨立容錯：某節點讀不到（如規則尚未開通）時不拖垮其他節點 */
+      this._gen++;
+      const gen = this._gen;
+      this._closeStreams();
+
+      /* 首選：根節點單一連線（新規則）；規則未開放根讀取時退回逐節點（舊規則相容） */
+      try {
+        const res = await fetch(`${CFG.databaseURL}/.json`);
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        const value = pick(await res.json());
+        if (gen !== this._gen) return;
+        data = value;
+        writeJSON(CACHE_KEY, data);
+        notify(data);
+        this._openStream(gen, null);
+        return;
+      } catch (e) { /* fall through */ }
+
       const results = await Promise.all(ROOTS.map(async (root) => {
         try {
-          const res = await fetch(`${CFG.databaseURL}/${root}.json`);
-          if (!res.ok) throw new Error("HTTP " + res.status);
-          return { root, value: (await res.json()) || {}, ok: true };
-        } catch (e) {
+          const r = await fetch(`${CFG.databaseURL}/${root}.json`);
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return { root, value: (await r.json()) || {}, ok: true };
+        } catch (err) {
           return { root, value: data[root] || {}, ok: false };
         }
       }));
+      if (gen !== this._gen) return;
       if (!results.some((r) => r.ok)) throw new Error("all roots failed");
-      const next = {};
+      const next = empty();
       results.forEach((r) => { next[r.root] = r.value; });
       data = next;
       writeJSON(CACHE_KEY, data);
       notify(data);
-      results.forEach((r) => { if (r.ok) this._stream(r.root); });
+      results.forEach((r) => { if (r.ok) this._openStream(gen, r.root); });
     },
 
     /* App 從背景回前景時重新同步（iOS 會殺掉背景的串流連線） */
@@ -61,17 +102,18 @@
       return this._load().catch(() => {});
     },
 
-    _stream(root) {
-      if (this._es[root]) this._es[root].close();
-      const es = new EventSource(`${CFG.databaseURL}/${root}.json`);
-      this._es[root] = es;
+    _openStream(gen, root) {
+      if (gen !== this._gen) return;
+      const es = new EventSource(`${CFG.databaseURL}${root ? "/" + root : ""}/.json`);
+      this._sources.push(es);
       const apply = (e) => {
         const msg = JSON.parse(e.data);
-        const parts = msg.path.split("/").filter(Boolean);
+        let parts = msg.path.split("/").filter(Boolean);
+        if (root) parts = [root].concat(parts);
         if (parts.length === 0) {
-          data[root] = msg.data || {};
+          data = pick(msg.data);
         } else {
-          let node = data[root];
+          let node = data;
           for (let i = 0; i < parts.length - 1; i++) {
             if (typeof node[parts[i]] !== "object" || node[parts[i]] === null) node[parts[i]] = {};
             node = node[parts[i]];
@@ -95,40 +137,51 @@
       es.addEventListener("patch", apply);
       const restart = () => {
         es.close();
-        setTimeout(() => { if (this._es[root] === es) this._stream(root); }, 5000);
+        setTimeout(() => this._openStream(gen, root), 5000);
       };
       es.addEventListener("cancel", restart);
       es.onerror = () => { if (es.readyState === EventSource.CLOSED) restart(); };
     },
 
-    async _put(root, date, person, body) {
-      const res = await fetch(`${CFG.databaseURL}/${root}/${date}/${person}.json`, {
+    async _put(path, body) {
+      const res = await authedFetch(path, {
         method: body === null ? "DELETE" : "PUT",
         body: body === null ? undefined : JSON.stringify(body)
       });
       if (!res.ok) throw new Error("HTTP " + res.status);
+      return res;
+    },
+
+    async _entry(root, date, person, body) {
+      await this._put(`/${root}/${date}/${person}.json`, body);
+      // 樂觀更新；串流會推回含伺服器時間的正式資料
       if (body === null) { if (data[root][date]) delete data[root][date][person]; }
       else {
         data[root][date] = data[root][date] || {};
-        data[root][date][person] = Object.assign({}, body, { ts: Date.now() }); // 樂觀更新；串流會推回伺服器時間
+        data[root][date][person] = Object.assign({}, body, { ts: Date.now() });
       }
       notify(data);
     },
 
-    checkin(date, person) { return this._put("checkins", date, person, { ts: { ".sv": "timestamp" } }); },
-    uncheck(date, person) { return this._put("checkins", date, person, null); },
-    say(date, person, text) { return this._put("messages", date, person, { text: text, ts: { ".sv": "timestamp" } }); },
-    unsay(date, person) { return this._put("messages", date, person, null); },
+    checkin(date, person) { return this._entry("checkins", date, person, { ts: { ".sv": "timestamp" } }); },
+    uncheck(date, person) { return this._entry("checkins", date, person, null); },
+    say(date, person, text) { return this._entry("messages", date, person, { text: text, ts: { ".sv": "timestamp" } }); },
+    unsay(date, person) { return this._entry("messages", date, person, null); },
+
+    /* 成員（認領／加入／移除） */
+    async setMember(id, obj) {
+      await this._put(`/members/${id}.json`, obj);
+      if (obj === null) delete data.members[id];
+      else data.members[id] = Object.assign({}, obj, { ts: Date.now() });
+      notify(data);
+    },
 
     /* 推播訂閱（每支手機一筆，掛在成員名下） */
     async saveSub(person, key, sub) {
-      const res = await fetch(`${CFG.databaseURL}/subs/${person}/${key}.json`, {
-        method: "PUT", body: JSON.stringify(sub)
-      });
-      if (!res.ok) throw new Error("HTTP " + res.status);
+      await this._put(`/subs/${person}/${key}.json`, sub);
     },
     async removeSub(person, key) {
-      await fetch(`${CFG.databaseURL}/subs/${person}/${key}.json`, { method: "DELETE" });
+      await this._put(`/subs/${person}/${key}.json`, null).catch(() => {});
     }
   };
 
@@ -160,6 +213,12 @@
     uncheck(date, person) { return this._set("checkins", date, person, null); },
     say(date, person, text) { return this._set("messages", date, person, { text: text, ts: Date.now() }); },
     unsay(date, person) { return this._set("messages", date, person, null); },
+    async setMember(id, obj) {
+      if (obj === null) delete data.members[id];
+      else data.members[id] = obj;
+      writeJSON(LOCAL_KEY, data);
+      notify(data);
+    },
     resync() { return Promise.resolve(); },
     async saveSub() { throw new Error("local mode"); },
     async removeSub() {}

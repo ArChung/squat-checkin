@@ -1,11 +1,13 @@
 /* 深蹲俱樂部：畫面與互動 */
 (function () {
-  const CFG = window.APP_CONFIG;
+  const CFG = globalThis.APP_CONFIG;
   const $ = (sel) => document.querySelector(sel);
 
   const WEEK_CH = ["日", "一", "二", "三", "四", "五", "六"];
   const MONTH_CH = ["一月", "二月", "三月", "四月", "五月", "六月", "七月", "八月", "九月", "十月", "十一月", "十二月"];
   const DAY_SHIFT_MS = CFG.dayStartHour * 3600000;
+  const FAN_COLORS = ["#7d5ba6", "#5e8f4a", "#a8506e", "#3e7f8a", "#8a6d3b", "#586994", "#9a5b38", "#4f7d6b"];
+  const ME_KEY = "squat-club-me";
 
   /* ---------- 台北時區日期工具（換日點：凌晨 dayStartHour 點） ---------- */
   const fmtKey = new Intl.DateTimeFormat("en-CA", { timeZone: CFG.timeZone, year: "numeric", month: "2-digit", day: "2-digit" });
@@ -33,11 +35,43 @@
     return String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
+  /* ---------- 身分與權限 ---------- */
+  const authOn = () => !!CFG.webApiKey && window.Store.mode === "cloud";
+  const myId = () => localStorage.getItem(ME_KEY) || "";
+  const memberInfo = (id) => (window.Store.data.members || {})[id];
+  const isFounder = (id) => CFG.members.some((f) => f.id === id);
+
+  function claimedByMe(id) {
+    const m = memberInfo(id);
+    return !!(m && m.claimedBy && m.claimedBy === DeviceAuth.cachedUid());
+  }
+  /* 卡片能不能被這支裝置操作：未啟用綁定＝老規矩全開放；啟用後＝只有認領裝置 */
+  function canOperate(id) {
+    if (!authOn()) return true;
+    return claimedByMe(id);
+  }
+  function iAmAdmin() {
+    const adm = memberInfo("azhong");
+    return authOn() && !!(adm && adm.claimedBy && adm.claimedBy === DeviceAuth.cachedUid());
+  }
+  function fanColor(id) {
+    let h = 0;
+    for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+    return FAN_COLORS[h % FAN_COLORS.length];
+  }
+  function fanList() {
+    const members = window.Store.data.members || {};
+    return Object.keys(members)
+      .filter((id) => id.indexOf("f_") === 0)
+      .sort((a, b) => (members[a].ts || 0) - (members[b].ts || 0));
+  }
+
   /* ---------- 狀態 ---------- */
   let today = dateKey();
   let prevDone = {};   // personId -> bool（用來偵測「剛蓋章」以觸發動畫）
   let firstRender = true;
   let celebrated = false;
+  let autoClaimTried = false;
 
   /* ---------- 印章 SVG ---------- */
   function sealSVG(animate) {
@@ -77,54 +111,95 @@
       (hasPushups ? `・男子組加碼伏地挺身 ${CFG.pushupsCount} 下` : "");
   }
 
-  /* ---------- 今日卡片 ---------- */
-  function renderCards(data) {
-    const wrap = $("#cards");
-    const todayCk = data.checkins[today] || {};
-    const todayMsg = data.messages[today] || {};
-    wrap.innerHTML = "";
+  /* ---------- 卡片（創始成員＋我自己的粉絲卡） ---------- */
+  function cardHTML(id, name, accent, opts) {
+    const data = window.Store.data;
+    const rec = (data.checkins[today] || {})[id];
+    const done = !!rec;
+    const justStamped = !firstRender && done && !prevDone[id];
+    const msg = opts.withBubble ? (data.messages[today] || {})[id] : null;
+    const mem = memberInfo(id);
+    const operable = canOperate(id);
+    const showClaim = authOn() && opts.isFounder && !mem && !myId();
+    const showReset = iAmAdmin() && opts.isFounder && mem && !claimedByMe(id);
 
-    CFG.members.forEach((m) => {
-      const rec = todayCk[m.id];
-      const done = !!rec;
-      const justStamped = !firstRender && done && !prevDone[m.id];
-      const msg = todayMsg[m.id];
-
-      const card = document.createElement("article");
-      card.className = "card";
-      card.style.setProperty("--accent", m.accent);
-      card.innerHTML = `
-        <div class="name-rail">${m.name}</div>
+    return `
+      <article class="card" data-card="${id}" style="--accent:${accent}">
+        <div class="name-rail">${esc(name)}</div>
         <div class="card-main">
-          <button class="bubble ${msg ? "" : "bubble-empty"}" data-say="${m.id}"
-                  aria-label="${msg ? "編輯" + m.name + "的嗆聲" : "幫" + m.name + "嗆一句"}">${
+          ${opts.withBubble ? `
+          <button class="bubble ${msg ? "" : "bubble-empty"} ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
+                  aria-label="${msg ? "編輯" + esc(name) + "的嗆聲" : "幫" + esc(name) + "嗆一句"}">${
             msg ? `${esc(msg.text)}<span class="bubble-ts">${fmtTime.format(new Date(msg.ts))}</span>` : "嗆一句⋯"
-          }</button>
+          }</button>` : ""}
           <div class="req">
             <span class="chip">深蹲<b>${CFG.squats}</b></span>
-            ${m.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
+            ${opts.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
           </div>
           ${done ? "" : `<div class="status">尚未打卡</div>`}
-          ${done ? `<button class="undo" data-undo="${m.id}">蓋錯了？取消打卡</button>` : ""}
+          ${showClaim ? `<button class="undo" data-claim="${id}">認領這張卡（綁定這支手機）</button>` : ""}
+          ${showReset ? `<button class="undo" data-reset="${id}">團主：重設綁定</button>` : ""}
+          ${done && operable ? `<button class="undo" data-undo="${id}">蓋錯了？取消打卡</button>` : ""}
         </div>
-        <button class="stamp-zone ${justStamped ? "splashing" : ""}" data-stamp="${m.id}"
-                aria-label="${done ? m.name + " 今日已完成" : "幫" + m.name + "蓋章打卡"}">
+        <button class="stamp-zone ${justStamped ? "splashing" : ""}" data-stamp="${id}"
+                aria-label="${done ? esc(name) + " 今日已完成" : "幫" + esc(name) + "蓋章打卡"}">
           ${done
             ? sealSVG(justStamped) + (justStamped ? splats() : "")
             : `<span class="stamp-empty"><span class="tap">蓋章</span><span class="hint">按此打卡</span></span>`}
         </button>
-        ${done ? `<span class="done-time"><b>${fmtTime.format(new Date(rec.ts))}</b> 蓋章</span>` : ""}`;
-      wrap.appendChild(card);
+        ${done ? `<span class="done-time"><b>${fmtTime.format(new Date(rec.ts))}</b> 蓋章</span>` : ""}
+      </article>`;
+  }
 
-      if (justStamped) {
+  function renderCards() {
+    const wrap = $("#cards");
+    let html = "";
+    CFG.members.forEach((m) => {
+      html += cardHTML(m.id, m.name, m.accent, { withBubble: true, pushups: m.pushups, isFounder: true });
+    });
+    const me = myId();
+    if (me && me.indexOf("f_") === 0 && memberInfo(me)) {
+      html += cardHTML(me, memberInfo(me).name, fanColor(me), { withBubble: false, pushups: false, isFounder: false });
+    }
+    wrap.innerHTML = html;
+
+    const todayCk = window.Store.data.checkins[today] || {};
+    [...wrap.querySelectorAll("[data-card]")].forEach((card) => {
+      const id = card.dataset.card;
+      const done = !!todayCk[id];
+      if (!firstRender && done && !prevDone[id]) {
         card.classList.add("thud");
         if (navigator.vibrate) navigator.vibrate(35);
       }
-      prevDone[m.id] = done;
+      prevDone[id] = done;
     });
   }
 
-  /* ---------- 本週戰績 ---------- */
+  /* ---------- 鄉民區（其他粉絲的壓縮列） ---------- */
+  function renderFans() {
+    const fans = fanList().filter((id) => id !== myId());
+    const on = authOn();
+    $("#joinBtn").classList.toggle("hidden", !on || !!myId());
+    $("#fansSection").classList.toggle("hidden", !on || fans.length === 0);
+    if (!on || !fans.length) return;
+
+    const members = window.Store.data.members;
+    const todayCk = window.Store.data.checkins[today] || {};
+    $("#fanRows").innerHTML = fans.map((id) => {
+      const rec = todayCk[id];
+      return `
+      <div class="fan-row">
+        <i class="fan-dot" style="background:${fanColor(id)}"></i>
+        <span class="fan-name">${esc(members[id].name)}</span>
+        ${rec
+          ? `<span class="fan-state done">✓ <b>${fmtTime.format(new Date(rec.ts))}</b></span>`
+          : `<span class="fan-state">今日未蹲</span>`}
+        ${iAmAdmin() ? `<button class="kick" data-kick="${id}">移除</button>` : ""}
+      </div>`;
+    }).join("");
+  }
+
+  /* ---------- 本週戰績（創始成員） ---------- */
   function renderWeek(data) {
     const grid = $("#weekGrid");
     const days = lastNDays(7);
@@ -133,8 +208,13 @@
       const p = keyParts(k);
       html += `<span class="wk-day ${k === today ? "today" : ""}" role="columnheader">${WEEK_CH[p.wd]}<b>${p.day}</b></span>`;
     });
-    CFG.members.forEach((m) => {
-      html += `<span class="wk-name" style="--accent:${m.accent}"><i></i>${m.name}</span>`;
+    const rows = CFG.members.map((m) => ({ id: m.id, name: m.name, accent: m.accent }));
+    const me = myId();
+    if (me && me.indexOf("f_") === 0 && memberInfo(me)) {
+      rows.push({ id: me, name: memberInfo(me).name, accent: fanColor(me) });
+    }
+    rows.forEach((m) => {
+      html += `<span class="wk-name" style="--accent:${m.accent}"><i></i>${esc(m.name)}</span>`;
       days.forEach((k) => {
         const on = !!(data.checkins[k] && data.checkins[k][m.id]);
         html += `<span class="dot ${on ? "on" : ""} ${k === today && !on ? "today-col" : ""}"></span>`;
@@ -143,7 +223,7 @@
     grid.innerHTML = html;
   }
 
-  /* ---------- 全員達成 ---------- */
+  /* ---------- 全員達成（創始成員） ---------- */
   function renderAllDone(data) {
     const todayCk = data.checkins[today] || {};
     const count = CFG.members.filter((m) => todayCk[m.id]).length;
@@ -174,7 +254,7 @@
     if (opts.withInput) {
       input.value = opts.inputValue || "";
       input.placeholder = opts.placeholder || "";
-      input.maxLength = CFG.maxSayLength;
+      input.maxLength = opts.maxLength || CFG.maxSayLength;
     }
     $("#sheetOverlay").classList.remove("hidden");
     if (opts.withInput) setTimeout(() => input.focus(), 60);
@@ -206,44 +286,91 @@
     showBanner("試用模式：打卡只會存在這支手機裡，還看不到彼此。接上雲端後全員互通。");
   }
 
+  /* ---------- 認領／加入 ---------- */
+  async function claimMember(id, name, role) {
+    const uid = await DeviceAuth.uid();
+    if (!uid) throw new Error("no uid");
+    await window.Store.setMember(id, { name: name, role: role, claimedBy: uid, ts: { ".sv": "timestamp" } });
+    localStorage.setItem(ME_KEY, id);
+  }
+
+  function openClaimSheet(id, andThenStamp) {
+    const f = CFG.members.find((x) => x.id === id);
+    openSheet({
+      title: `認領 <b>${f.name}</b> 的卡？<br>認領後<b>只有這支手機</b>能動這張卡，確定是本人再按。`,
+      confirmText: "我是本人，認領！",
+      cancelText: "先不要",
+      onConfirm: () => {
+        claimMember(id, f.name, "founder")
+          .then(() => { renderAll(); if (andThenStamp) openStampSheet(id); })
+          .catch(() => flashError("認領失敗，網路好像不太順，再試一次。"));
+      }
+    });
+  }
+
+  function openStampSheet(id) {
+    const f = CFG.members.find((x) => x.id === id);
+    const mem = memberInfo(id);
+    const name = f ? f.name : (mem ? mem.name : "");
+    const task = f && f.pushups
+      ? `深蹲 ${CFG.squats} 下＋伏地挺身 ${CFG.pushupsCount} 下`
+      : `深蹲 ${CFG.squats} 下`;
+    openSheet({
+      title: `<b>${esc(name)}</b>｜${task}<br>都做完了嗎？`,
+      confirmText: "完成，蓋章！",
+      cancelText: "還沒啦",
+      onConfirm: () => window.Store.checkin(today, id)
+        .then(() => pokeOthers(id))
+        .catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
+    });
+  }
+
   /* ---------- 互動 ---------- */
   document.addEventListener("click", (e) => {
     const stampBtn = e.target.closest("[data-stamp]");
     const undoBtn = e.target.closest("[data-undo]");
     const sayBtn = e.target.closest("[data-say]");
+    const claimBtn = e.target.closest("[data-claim]");
+    const kickBtn = e.target.closest("[data-kick]");
+    const resetBtn = e.target.closest("[data-reset]");
+    const notifyBtn = e.target.closest("[data-notify]");
 
     if (stampBtn) {
-      const m = CFG.members.find((x) => x.id === stampBtn.dataset.stamp);
-      const todayCk = window.Store.data.checkins[today] || {};
-      if (todayCk[m.id]) return; // 已蓋章
-      const task = m.pushups
-        ? `深蹲 ${CFG.squats} 下＋伏地挺身 ${CFG.pushupsCount} 下`
-        : `深蹲 ${CFG.squats} 下`;
-      openSheet({
-        title: `<b>${m.name}</b>｜${task}<br>都做完了嗎？`,
-        confirmText: "完成，蓋章！",
-        cancelText: "還沒啦",
-        onConfirm: () => window.Store.checkin(today, m.id)
-          .then(() => pokeOthers(m.id))
-          .catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
-      });
+      const id = stampBtn.dataset.stamp;
+      if ((window.Store.data.checkins[today] || {})[id]) return; // 已蓋章
+      if (authOn()) {
+        const mem = memberInfo(id);
+        if (!mem && isFounder(id)) {
+          if (myId()) { flashError("這支手機已經有自己的卡囉。"); return; }
+          openClaimSheet(id, true);
+          return;
+        }
+        if (!canOperate(id)) { flashError("這張卡已綁定本人的手機，只有本人能蓋章。"); return; }
+      }
+      openStampSheet(id);
     }
 
     if (undoBtn) {
-      const m = CFG.members.find((x) => x.id === undoBtn.dataset.undo);
+      const id = undoBtn.dataset.undo;
+      if (authOn() && !canOperate(id)) return;
+      const mem = memberInfo(id);
+      const f = CFG.members.find((x) => x.id === id);
+      const name = f ? f.name : (mem ? mem.name : "");
       openSheet({
-        title: `要取消 <b>${m.name}</b> 今天的打卡嗎？`,
+        title: `要取消 <b>${esc(name)}</b> 今天的打卡嗎？`,
         confirmText: "取消打卡",
         cancelText: "不要，保留",
-        onConfirm: () => window.Store.uncheck(today, m.id).catch(() => flashError("取消失敗，網路好像不太順，再試一次。"))
+        onConfirm: () => window.Store.uncheck(today, id).catch(() => flashError("取消失敗，網路好像不太順，再試一次。"))
       });
     }
 
     if (sayBtn) {
-      const m = CFG.members.find((x) => x.id === sayBtn.dataset.say);
-      const existing = (window.Store.data.messages[today] || {})[m.id];
+      const id = sayBtn.dataset.say;
+      if (authOn() && !canOperate(id)) { flashError("嗆聲只有本人能發，這張卡已綁定本人的手機。"); return; }
+      const f = CFG.members.find((x) => x.id === id);
+      const existing = (window.Store.data.messages[today] || {})[id];
       openSheet({
-        title: `<b>${m.name}</b> 的今日嗆聲`,
+        title: `<b>${f.name}</b> 的今日嗆聲`,
         confirmText: "送出！",
         cancelText: "算了",
         withInput: true,
@@ -251,41 +378,73 @@
         placeholder: existing ? "清空送出＝刪掉這句" : "例：今天你們死定了",
         onConfirm: (text) => {
           const act = text
-            ? window.Store.say(today, m.id, text).then(() => pokeOthers(m.id))
-            : (existing ? window.Store.unsay(today, m.id) : Promise.resolve());
+            ? window.Store.say(today, id, text).then(() => pokeOthers(id))
+            : (existing ? window.Store.unsay(today, id) : Promise.resolve());
           act.catch(() => flashError("嗆聲送不出去，網路好像不太順，再試一次。"));
         }
       });
     }
+
+    if (claimBtn) openClaimSheet(claimBtn.dataset.claim, false);
+
+    if (kickBtn) {
+      const id = kickBtn.dataset.kick;
+      const mem = memberInfo(id);
+      openSheet({
+        title: `把 <b>${esc(mem ? mem.name : "")}</b> 移出打卡團？`,
+        confirmText: "移除",
+        cancelText: "不要",
+        onConfirm: () => window.Store.setMember(id, null).catch(() => flashError("移除失敗，再試一次。"))
+      });
+    }
+
+    if (resetBtn) {
+      const id = resetBtn.dataset.reset;
+      const f = CFG.members.find((x) => x.id === id);
+      openSheet({
+        title: `重設 <b>${f.name}</b> 的手機綁定？<br>重設後本人要重新認領（換手機時用）。`,
+        confirmText: "重設綁定",
+        cancelText: "不要",
+        onConfirm: () => window.Store.setMember(id, null).catch(() => flashError("重設失敗，再試一次。"))
+      });
+    }
+
+    if (notifyBtn) enableNotify(notifyBtn.dataset.notify);
   });
+
+  $("#joinBtn").addEventListener("click", () => {
+    openSheet({
+      title: `加入一起蹲！<br>取個名字，你會有自己的卡（只有這支手機能動）。`,
+      confirmText: "加入！",
+      cancelText: "再想想",
+      withInput: true,
+      placeholder: "你的暱稱（12 字內）",
+      maxLength: 12,
+      onConfirm: (name) => {
+        if (!name) { flashError("要取個名字才能加入喔。"); return; }
+        const fanId = "f_" + Math.random().toString(36).slice(2, 10);
+        claimMember(fanId, name, "fan")
+          .then(renderAll)
+          .catch(() => flashError("加入失敗，網路好像不太順，再試一次。"));
+      }
+    });
+  });
+
   $("#sheetCancel").addEventListener("click", closeSheet);
   $("#sheetOverlay").addEventListener("click", (e) => { if (e.target.id === "sheetOverlay") closeSheet(); });
 
-  /* ---------- 重繪 ---------- */
-  function render(data) {
-    renderMasthead();
-    renderCards(data);
-    renderWeek(data);
-    renderAllDone(data);
-    firstRender = false;
+  /* 阿忠與小白的裝置已在通知設定選過身分：資料一到就自動認領，無感升級 */
+  function autoClaim() {
+    if (autoClaimTried || !authOn() || firstRender) return;
+    const me = myId();
+    if (me && isFounder(me) && !memberInfo(me)) {
+      autoClaimTried = true;
+      const f = CFG.members.find((x) => x.id === me);
+      claimMember(me, f.name, "founder").then(renderAll).catch(() => { autoClaimTried = false; });
+    }
   }
 
-  /* 跨日自動翻頁（凌晨三點）＋深夜提示更新 */
-  setInterval(() => {
-    const now = dateKey();
-    if (now !== today) {
-      today = now;
-      prevDone = {};
-      firstRender = true;
-      celebrated = false;
-      render(window.Store.data);
-    } else {
-      $("#lateNote").classList.toggle("hidden", !inLateNight());
-    }
-  }, 30000);
-
   /* ---------- 推播通知 ---------- */
-  const ME_KEY = "squat-club-me";
   const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
 
   function urlB64ToBytes(s) {
@@ -304,39 +463,55 @@
     $("#notifySection").classList.remove("hidden");
     const names = $("#notifyNames");
     const state = $("#notifyState");
-    const me = localStorage.getItem(ME_KEY);
+    const hint = $("#notifyHint");
+    const me = myId();
 
-    let sub = null;
-    if (pushSupported()) {
-      try {
-        const reg = await navigator.serviceWorker.ready;
-        sub = await reg.pushManager.getSubscription();
-      } catch (e) {}
-    } else {
-      $("#notifyHint").textContent = "要收通知，請先把網頁「加入主畫面」，再從主畫面的圖示開啟這裡設定。";
+    if (!pushSupported()) {
+      hint.textContent = "要收通知，請先把網頁「加入主畫面」，再從主畫面的圖示開啟這裡設定。";
+      hint.classList.remove("hidden");
       names.innerHTML = "";
+      state.classList.add("hidden");
       return;
     }
 
-    if (sub && me) {
-      const m = CFG.members.find((x) => x.id === me);
+    let sub = null;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      sub = await reg.pushManager.getSubscription();
+    } catch (e) {}
+
+    if (sub && me && memberInfo(me)) {
       names.innerHTML = "";
       state.classList.remove("hidden");
-      state.innerHTML = `這支手機已開啟 <b>${m ? m.name : me}</b> 的通知 ✓
+      state.innerHTML = `這支手機已開啟 <b>${esc(memberInfo(me).name)}</b> 的通知 ✓
         <button class="notify-off" id="notifyOff">關閉通知</button>`;
       $("#notifyOff").onclick = disableNotify;
-      $("#notifyHint").classList.add("hidden");
-    } else {
-      state.classList.add("hidden");
-      $("#notifyHint").classList.remove("hidden");
+      hint.classList.add("hidden");
+      return;
+    }
+
+    state.classList.add("hidden");
+    hint.classList.remove("hidden");
+    if (!authOn()) {
+      /* 尚未啟用裝置綁定：維持四人選單 */
+      hint.textContent = "點自己的名字，這支手機就會收到大家的打卡與嗆聲通知";
       names.innerHTML = CFG.members.map((m) =>
         `<button class="notify-name" style="--accent:${m.accent}" data-notify="${m.id}">我是${m.name}</button>`
       ).join("");
+      return;
+    }
+    if (me && memberInfo(me)) {
+      hint.textContent = "開啟後，這支手機會收到打卡與嗆聲的即時通知";
+      names.innerHTML = `<button class="notify-name notify-single" data-notify="${me}">🔔 開啟通知</button>`;
+    } else {
+      hint.textContent = "先認領你的卡（或按上面的加入），就能開啟通知";
+      names.innerHTML = "";
     }
   }
 
   async function enableNotify(personId) {
     try {
+      if (authOn() && !canOperate(personId)) { flashError("只能開啟自己那張卡的通知喔。"); return; }
       const perm = await Notification.requestPermission();
       if (perm !== "granted") { flashError("通知權限沒開，去 iPhone 設定裡找到這個 App 打開通知。"); return; }
       const reg = await navigator.serviceWorker.ready;
@@ -354,26 +529,20 @@
 
   async function disableNotify() {
     try {
-      const me = localStorage.getItem(ME_KEY);
+      const me = myId();
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         if (me) window.Store.removeSub(me, subKey(sub.endpoint));
         await sub.unsubscribe();
       }
-      localStorage.removeItem(ME_KEY);
       renderNotify();
     } catch (e) {}
   }
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-notify]");
-    if (btn) enableNotify(btn.dataset.notify);
-  });
-
-  /* 打卡／嗆聲成功後，請 Worker 推播給其他人（沒部署 Worker 前靜默略過） */
+  /* 打卡／嗆聲成功後，請 Worker 推播給其他人（只有創始成員的動作會推播） */
   function pokeOthers(actorId) {
-    if (!CFG.notifyEndpoint) return;
+    if (!CFG.notifyEndpoint || !isFounder(actorId)) return;
     fetch(`${CFG.notifyEndpoint.replace(/\/$/, "")}/notify`, {
       method: "POST",
       body: JSON.stringify({ actor: actorId })
@@ -394,7 +563,7 @@
     const nk = dateKey();
     if (nk !== today) {
       today = nk; prevDone = {}; firstRender = true; celebrated = false;
-      render(window.Store.data);
+      renderAll();
     }
     if (Date.now() - lastVisCheck < 60000) return;
     lastVisCheck = Date.now();
@@ -404,13 +573,40 @@
     });
   });
 
+  /* ---------- 重繪 ---------- */
+  function renderAll() {
+    const data = window.Store.data;
+    renderMasthead();
+    renderCards();
+    renderFans();
+    renderWeek(data);
+    renderAllDone(data);
+    firstRender = false;
+    autoClaim();
+    renderNotify();
+  }
+
+  /* 跨日自動翻頁（凌晨三點）＋深夜提示更新 */
+  setInterval(() => {
+    const now = dateKey();
+    if (now !== today) {
+      today = now;
+      prevDone = {};
+      firstRender = true;
+      celebrated = false;
+      renderAll();
+    } else {
+      $("#lateNote").classList.toggle("hidden", !inLateNight());
+    }
+  }, 30000);
+
   /* ---------- 啟動 ---------- */
   renderMasthead();
   if (window.Store.mode === "local") showLocalBanner();
 
-  window.Store.init(render).catch(() => {
+  window.Store.init(renderAll).catch(() => {
     flashError("連不上雲端，先顯示上次的紀錄。恢復連線後重新整理即可。");
-    render(window.Store.data);
+    renderAll();
   });
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {

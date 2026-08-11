@@ -493,6 +493,68 @@ body::before {
 }
 .dot.today-col { opacity: .9; border-color: var(--seal); }
 
+/* ============ 加入按鈕與鄉民區 ============ */
+.join-btn {
+  display: block;
+  width: 100%;
+  margin-top: 16px;
+  font-family: var(--font-zh);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  padding: 13px;
+  background: var(--paper-card);
+  color: var(--seal-deep);
+  border: 2px dashed var(--seal);
+  border-radius: 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.join-btn:active { transform: scale(.985); }
+
+.fan-rows { display: flex; flex-direction: column; gap: 9px; }
+.fan-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 4px;
+  border-bottom: 1px dashed var(--paper-deep);
+  font-size: 15px;
+}
+.fan-row:last-child { border-bottom: none; }
+.fan-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex: none;
+}
+.fan-name {
+  font-weight: 700;
+  letter-spacing: .06em;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fan-state { font-size: 13px; color: var(--ink-soft); flex: none; }
+.fan-state.done { color: var(--seal); font-weight: 700; }
+.fan-state.done b { font-family: var(--font-num); font-weight: 400; letter-spacing: .06em; }
+.kick {
+  font-family: var(--font-zh);
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: none;
+  border: 1.5px solid var(--dash);
+  border-radius: 8px;
+  padding: 3px 8px;
+  cursor: pointer;
+  flex: none;
+}
+
+.bubble-locked { cursor: default; }
+.notify-single { grid-column: 1 / -1; background: var(--seal); }
+
 /* ============ 打卡通知 ============ */
 .notify-hint {
   font-size: 13.5px;
