@@ -3,7 +3,7 @@ globalThis.APP_CONFIG = {
   databaseURL: "https://squat-club-default-rtdb.asia-southeast1.firebasedatabase.app",
 
   /* Firebase Web API 金鑰（公開金鑰，非機密）：填入後啟用「裝置綁定＋粉絲加入」 */
-  webApiKey: "",
+  webApiKey: "AIzaSyDKO88azZ7g-SCsfxLHG_87J2gGvzenkdU",
 
   /* 推播通知：公鑰（配對的私鑰在 Cloudflare Worker 裡）；notifyEndpoint 是 Worker 網址，部署後填入 */
   vapidPublicKey: "BIOecdeddcO6-3z_jsQIeMJPwmxr0s5fTJLZNgaGj8kVFfUw3MLLQPPEU1vW4SG--0rt3LlXzmpgaPpWgAu1vtE",
