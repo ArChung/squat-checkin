@@ -170,11 +170,9 @@
             <span class="chip">深蹲<b>${CFG.squats}</b></span>
             ${opts.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
           </div>
-          ${opts.withBubble ? `
-          <button class="bubble ${msg ? "" : "bubble-empty"} ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
-                  aria-label="${msg ? "編輯" + esc(name) + "的嗆聲" : "幫" + esc(name) + "嗆一句"}">${
-            msg ? esc(msg.text) : "嗆一句⋯"
-          }</button>` : ""}
+          ${opts.withBubble && msg ? `
+          <button class="bubble ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
+                  aria-label="編輯${esc(name)}的嗆聲">${esc(msg.text)}</button>` : ""}
           ${done ? "" : `<div class="status">尚未打卡</div>`}
           ${showClaim ? `<button class="undo" data-claim="${id}">認領這張卡（綁定這支手機）</button>` : ""}
           ${showReset ? `<button class="undo" data-reset="${id}">團主：重設綁定</button>` : ""}
@@ -376,13 +374,25 @@
     const task = f && f.pushups
       ? `深蹲 ${CFG.squats} 下＋伏地挺身 ${CFG.pushupsCount} 下`
       : `深蹲 ${CFG.squats} 下`;
+    const canSay = !!f; // 嗆聲限創始成員
+    const existing = canSay ? (window.Store.data.messages[today] || {})[id] : null;
     openSheet({
       title: `<b>${esc(name)}</b>｜${task}<br>都做完了嗎？`,
       confirmText: "完成，蓋章！",
       cancelText: "還沒啦",
-      onConfirm: () => window.Store.checkin(today, id)
-        .then(() => pokeOthers(id))
-        .catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"))
+      withInput: canSay,
+      inputValue: existing ? existing.text : "",
+      placeholder: "順便嗆一句（可不填）",
+      onConfirm: (text) => {
+        const jobs = [window.Store.checkin(today, id)];
+        if (canSay) {
+          if (text) jobs.push(window.Store.say(today, id, text));
+          else if (existing) jobs.push(window.Store.unsay(today, id));
+        }
+        Promise.all(jobs)
+          .then(() => pokeOthers(id))
+          .catch(() => flashError("蓋章失敗，網路好像不太順，再試一次。"));
+      }
     });
   }
 
@@ -427,7 +437,7 @@
 
     if (sayBtn) {
       const id = sayBtn.dataset.say;
-      if (authOn() && !canOperate(id)) { flashError("嗆聲只有本人能發，這張卡已綁定本人的手機。"); return; }
+      if (authOn() && !canOperate(id)) return; // 別人的泡泡：純顯示
       const f = CFG.members.find((x) => x.id === id);
       const existing = (window.Store.data.messages[today] || {})[id];
       openSheet({

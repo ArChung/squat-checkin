@@ -357,15 +357,6 @@ body::before {
   border-bottom: 2px solid var(--ink);
   transform: rotate(45deg) skew(8deg, 8deg);
 }
-.bubble-empty {
-  background: none;
-  border: 2px dashed var(--dash);
-  color: var(--ink-soft);
-  font-weight: 400;
-  box-shadow: none;
-}
-.bubble-empty::before { display: none; }
-
 .undo {
   align-self: flex-start;
   font-family: var(--font-zh);
