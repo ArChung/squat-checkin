@@ -15,7 +15,8 @@ globalThis.APP_CONFIG = {
     { id: "azhong",  name: "阿忠",  pushups: false, accent: "#2f6f5e" },
     { id: "xiaobai", name: "小白",  pushups: false, accent: "#4a6fa5" },
     { id: "vicky",   name: "Vicky", pushups: false, accent: "#c67b3b" },
-    { id: "xiaoj",   name: "小J",   pushups: false, accent: "#7d5ba6" }
+    { id: "xiaoj",   name: "小J",   pushups: false, accent: "#7d5ba6" },
+    { id: "dami",    name: "大瞇",  pushups: false, accent: "#a8506e" }
   ],
 
   squats: 40,
