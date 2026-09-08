@@ -163,8 +163,20 @@
       notify(data);
     },
 
-    checkin(date, person) { return this._entry("checkins", date, person, { ts: { ".sv": "timestamp" } }); },
+    checkin(date, person, withPlank) {
+      const body = { ts: { ".sv": "timestamp" } };
+      if (withPlank) body.plank = { ".sv": "timestamp" };
+      return this._entry("checkins", date, person, body);
+    },
     uncheck(date, person) { return this._entry("checkins", date, person, null); },
+    /* 天選加碼補做（蓋章後才被抽中時，補蓋金章用） */
+    async markPlank(date, person) {
+      await this._put(`/checkins/${date}/${person}/plank.json`, { ".sv": "timestamp" });
+      if (data.checkins[date] && data.checkins[date][person]) {
+        data.checkins[date][person].plank = Date.now();
+        notify(data);
+      }
+    },
     say(date, person, text) { return this._entry("messages", date, person, { text: text, ts: { ".sv": "timestamp" } }); },
     unsay(date, person) { return this._entry("messages", date, person, null); },
 
@@ -182,6 +194,12 @@
     },
     async removeSub(person, key) {
       await this._put(`/subs/${person}/${key}.json`, null).catch(() => {});
+    },
+
+    /* 天選紀錄：把當天中籤者永久寫進資料庫（寫一次，規則擋重寫），
+       日後即使成員名單變動，歷史仍凍結、可回溯。UI 不顯示，純存檔。 */
+    async recordDraw(date, ids) {
+      await this._put(`/draws/${date}.json`, { ids: ids, ts: { ".sv": "timestamp" } }).catch(() => {});
     }
   };
 
@@ -209,8 +227,19 @@
       notify(data);
     },
 
-    checkin(date, person) { return this._set("checkins", date, person, { ts: Date.now() }); },
+    checkin(date, person, withPlank) {
+      const body = { ts: Date.now() };
+      if (withPlank) body.plank = Date.now();
+      return this._set("checkins", date, person, body);
+    },
     uncheck(date, person) { return this._set("checkins", date, person, null); },
+    async markPlank(date, person) {
+      if (data.checkins[date] && data.checkins[date][person]) {
+        data.checkins[date][person].plank = Date.now();
+        writeJSON(LOCAL_KEY, data);
+        notify(data);
+      }
+    },
     say(date, person, text) { return this._set("messages", date, person, { text: text, ts: Date.now() }); },
     unsay(date, person) { return this._set("messages", date, person, null); },
     async setMember(id, obj) {
@@ -221,7 +250,8 @@
     },
     resync() { return Promise.resolve(); },
     async saveSub() { throw new Error("local mode"); },
-    async removeSub() {}
+    async removeSub() {},
+    async recordDraw() {}
   };
 
   window.Store = CFG.databaseURL ? cloud : local;

@@ -224,6 +224,123 @@ body::before {
   box-shadow: 0 0 0 2px rgba(200, 65, 47, .15);
 }
 
+/* ============ 天選之人：開籤橫幅 ============ */
+.draw-strip {
+  position: relative;
+  overflow: hidden;
+  margin-top: 10px;
+  padding: 9px 12px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  background: linear-gradient(120deg, rgba(217, 164, 65, .16), rgba(200, 65, 47, .08));
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  font-size: 14px;
+  letter-spacing: .05em;
+}
+.draw-strip.revealed {
+  background: linear-gradient(120deg, rgba(217, 164, 65, .28), rgba(184, 134, 11, .16));
+}
+
+/* 常駐星星閃爍 */
+.ds-stars { position: absolute; inset: 0; pointer-events: none; }
+.ds-star {
+  position: absolute;
+  font-style: normal;
+  font-size: var(--sz, 7px);
+  line-height: 1;
+  color: #e7c063;
+  text-shadow: 0 0 4px rgba(231, 192, 99, .8);
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(.5);
+  animation: twinkle 2.4s ease-in-out infinite;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(.4) rotate(0deg); }
+  50% { opacity: .95; transform: translate(-50%, -50%) scale(1) rotate(45deg); }
+}
+
+.ds-icon { position: relative; font-size: 16px; }
+.ds-text, .ds-slot, .ds-task { position: relative; }
+.ds-text { color: var(--ink); font-weight: 700; }
+.ds-text b { color: var(--seal); font-family: var(--font-num); font-weight: 400; letter-spacing: .06em; }
+.ds-slot {
+  display: inline-block;
+  min-width: 3.2em;
+  text-align: center;
+  font-weight: 700;
+  padding: 2px 9px;
+  background: var(--accent, var(--seal));
+  color: #fff6e6;
+  border: 1.5px solid var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 rgba(38, 33, 25, .25);
+}
+.ds-slot.ds-hit { animation: dsHit .4s cubic-bezier(.2, 1.6, .4, 1); }
+.ds-task { font-size: 12.5px; color: #7a5a17; font-weight: 700; margin-left: auto; }
+@keyframes dsHit {
+  0% { transform: scale(1.6) rotate(-6deg); }
+  100% { transform: none; }
+}
+
+/* ============ 天選卡片（金框＋金底＋掃光） ============ */
+.card.chosen {
+  border-color: #b8860b;
+  box-shadow: 4px 4px 0 #8a6410;
+  background: linear-gradient(150deg, #fdf4d8 0%, #f7e9be 55%, #f2dfa8 100%);
+}
+.card.chosen .bubble { background: #fffdf5; }
+.card.chosen::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 43%, rgba(255, 223, 140, .5) 50%, transparent 57%);
+  transform: translateX(-130%);
+  animation: sweep 6.5s ease-in-out infinite;
+}
+@keyframes sweep {
+  0%, 68% { transform: translateX(-130%); }
+  92%, 100% { transform: translateX(130%); }
+}
+.chosen-badge {
+  position: absolute;
+  top: 7px;
+  right: 8px;
+  z-index: 1;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  padding: 2px 7px 2px 8px;
+  color: #6d4f0a;
+  background: linear-gradient(135deg, #f3d484, #d9a441);
+  border: 1.5px solid #8a6410;
+  border-radius: 7px;
+  transform: rotate(6deg);
+  box-shadow: 1px 1px 0 rgba(109, 79, 10, .4);
+}
+.chip.gold {
+  border-color: #8a6410;
+  background: linear-gradient(135deg, rgba(243, 212, 132, .55), rgba(217, 164, 65, .35));
+  color: #6d4f0a;
+}
+.gold-mend { color: #8a6410; font-weight: 700; text-decoration-color: #b8860b; }
+.done-time.gold { color: #8a6410; }
+.gold-tag {
+  display: inline-block;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: #6d4f0a;
+  background: linear-gradient(135deg, #f3d484, #d9a441);
+  border-radius: 6px;
+  padding: 1px 6px;
+  margin-left: 6px;
+  vertical-align: 2px;
+}
+
 /* ============ 全員達成 ============ */
 .all-done {
   margin: 14px 0 -2px;

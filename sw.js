@@ -1,13 +1,16 @@
 /* Service Worker：網路優先快取＋推播通知 */
-importScripts("js/config.js");
+importScripts("js/config.js", "js/draw.js");
 const CFG = globalThis.APP_CONFIG;
+const Draw = globalThis.Draw;
 
-const CACHE = "squat-club-v2";
+const CACHE = "squat-club-v3";
 const CORE = [
   ".",
   "index.html",
   "css/style.css",
   "js/config.js",
+  "js/draw.js",
+  "js/auth.js",
   "js/storage.js",
   "js/app.js",
   "manifest.webmanifest",
@@ -65,7 +68,15 @@ self.addEventListener("push", (e) => {
       for (const id in (msg || {})) {
         if (!latest || msg[id].ts > latest.ts) latest = { type: "say", id, ts: msg[id].ts, text: msg[id].text };
       }
-      if (latest) {
+      /* 開獎後 10 分鐘內收到、且最近 2 分鐘沒人動作 → 這是 9 點的開籤推播 */
+      const now = Date.now();
+      const sinceReveal = CFG.draw && Draw.isRevealed(day, now) ? now - Draw.revealAt(day) : -1;
+      if (sinceReveal >= 0 && sinceReveal < 600000 && (!latest || now - latest.ts > 120000)) {
+        const names = Draw.drawFor(day)
+          .map((id) => (CFG.members.find((m) => m.id === id) || {}).name)
+          .filter(Boolean);
+        if (names.length) body = `👑 今日天選之人：${names.join("、")}！加碼${CFG.draw.task}`;
+      } else if (latest) {
         const name = (CFG.members.find((m) => m.id === latest.id) || {}).name || "有人";
         body = latest.type === "checkin"
           ? `${name} 蓋章了！今日 ${Object.keys(ck || {}).length}/${CFG.members.length} 人達成`

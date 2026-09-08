@@ -29,6 +29,10 @@ globalThis.APP_CONFIG = {
   /* 挑戰期間：從 startDate 起算 weeks 週 */
   challenge: { startDate: "2026-08-09", weeks: 8 },
 
+  /* 天選之人：每天早上 revealHour 點開獎，加碼 task。
+     人數也隨機：countWeights 是各人數的權重，{1:6, 2:4} = 六成抽 1 人、四成抽 2 人。 */
+  draw: { startDate: "2026-09-09", revealHour: 9, task: "棒式 30 秒", countWeights: { "1": 6, "2": 4 } },
+
   /* 嗆聲留言字數上限 */
   maxSayLength: 40
 };

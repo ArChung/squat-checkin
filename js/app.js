@@ -78,18 +78,27 @@
   let celebrated = false;
   let autoClaimTried = false;
 
-  /* ---------- 印章 SVG ---------- */
-  function sealSVG(animate) {
+  /* ---------- 印章 SVG（gold＝天選金印特別版） ---------- */
+  function sealSVG(animate, gold) {
+    const ink = gold ? "url(#goldg)" : "var(--seal)";
     return `
-    <svg class="seal ${animate ? "stamp-in" : ""}" viewBox="0 0 100 100" aria-hidden="true">
-      <g fill="none" stroke="var(--seal)">
+    <svg class="seal ${animate ? "stamp-in" : ""} ${gold ? "seal-gold" : ""}" viewBox="0 0 100 100" aria-hidden="true">
+      ${gold ? `<defs><linearGradient id="goldg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#b07d0a"/><stop offset=".5" stop-color="#8a5c00"/><stop offset="1" stop-color="#5f3f04"/>
+      </linearGradient></defs>` : ""}
+      <g fill="none" stroke="${ink}">
         <circle cx="50" cy="50" r="45" stroke-width="5"/>
         <circle cx="50" cy="50" r="36.5" stroke-width="1.8"/>
       </g>
-      <text x="50" y="46" text-anchor="middle" font-family="LXGW WenKai TC, serif" font-weight="700"
-            font-size="27" fill="var(--seal)" letter-spacing="1">達成</text>
-      <text x="50" y="70" text-anchor="middle" font-family="Anton, sans-serif"
-            font-size="13" fill="var(--seal)" letter-spacing="2">SQUAT!</text>
+      ${gold
+        ? `<text x="50" y="45" text-anchor="middle" font-family="LXGW WenKai TC, serif" font-weight="700"
+             font-size="20" fill="${ink}" letter-spacing="1.5">天選達成</text>
+           <text x="50" y="69" text-anchor="middle" font-family="Anton, sans-serif"
+             font-size="12" fill="${ink}" letter-spacing="1.5">BONUS!</text>`
+        : `<text x="50" y="46" text-anchor="middle" font-family="LXGW WenKai TC, serif" font-weight="700"
+             font-size="27" fill="${ink}" letter-spacing="1">達成</text>
+           <text x="50" y="70" text-anchor="middle" font-family="Anton, sans-serif"
+             font-size="13" fill="${ink}" letter-spacing="2">SQUAT!</text>`}
     </svg>`;
   }
 
@@ -150,6 +159,87 @@
       <div class="ch-boxes">${boxes}</div>`;
   }
 
+  /* ---------- 天選之人：開籤橫幅 ---------- */
+  const DRAW_ANIM_KEY = "squat-club-draw-anim";
+  let drawAnimatingUntil = 0;
+
+  function renderDraw() {
+    const el = $("#drawStrip");
+    const d = CFG.draw;
+    if (!d || !d.startDate) { el.classList.add("hidden"); return; }
+    if (Date.now() < drawAnimatingUntil) return; // 開籤動畫進行中，不要打斷
+    el.classList.remove("hidden");
+    el.classList.remove("revealed");
+    const hh = String(d.revealHour).padStart(2, "0");
+
+    if (today < d.startDate) {
+      const p = keyParts(d.startDate);
+      el.innerHTML = `<span class="ds-icon">🎋</span><span class="ds-text">天選之人 ${p.m}/${p.day} 開張・每天 ${hh}:00 抽 1～2 人加碼<b>${esc(d.task)}</b></span>`;
+      return;
+    }
+    if (!Draw.isRevealed(today)) {
+      el.innerHTML = `<span class="ds-icon">🎋</span><span class="ds-text">今日天選之人・<b>${hh}:00</b> 開籤（抽 1～2 人加碼${esc(d.task)}）</span>`;
+      return;
+    }
+    const winners = Draw.drawFor(today);
+    const members = winners.map((id) => CFG.members.find((x) => x.id === id)).filter(Boolean);
+    const needAnim = localStorage.getItem(DRAW_ANIM_KEY) !== today &&
+      !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.classList.add("revealed");
+    el.innerHTML =
+      `<span class="ds-stars" aria-hidden="true">${starField()}</span>` +
+      `<span class="ds-icon">👑</span><span class="ds-text">今日天選</span>` +
+      members.map((m, i) =>
+        `<span class="ds-slot" id="dsSlot${i}" style="--accent:${m.accent}">${needAnim ? "？" : esc(m.name)}</span>`
+      ).join("") +
+      `<span class="ds-task">加碼${esc(d.task)}</span>`;
+    if (needAnim) runDrawAnim(members);
+  }
+
+  /* 常駐星星閃爍：散佈幾顆一閃一閃的星星 */
+  function starField() {
+    const pos = [[8, 30], [20, 70], [34, 22], [52, 62], [68, 34], [82, 68], [92, 26], [46, 20], [74, 74]];
+    return pos.map((p, i) =>
+      `<i class="ds-star" style="left:${p[0]}%;top:${p[1]}%;animation-delay:${(i * 0.37).toFixed(2)}s;` +
+      `--sz:${(i % 3 === 0 ? 10 : i % 3 === 1 ? 7 : 5)}px">✦</i>`
+    ).join("");
+  }
+
+  function runDrawAnim(members) {
+    localStorage.setItem(DRAW_ANIM_KEY, today);
+    drawAnimatingUntil = Date.now() + 3500;
+    const pool = CFG.members.map((m) => m.name);
+    members.forEach((m, i) => {
+      const slot = document.getElementById("dsSlot" + i);
+      if (!slot) return;
+      let tick = 0;
+      const total = 14 + i * 7; // 第二籤晚一點開
+      const spin = () => {
+        tick++;
+        if (tick < total) {
+          slot.textContent = pool[Math.floor(Math.random() * pool.length)];
+          setTimeout(spin, 40 + tick * 9); // 逐漸減速
+        } else {
+          slot.textContent = m.name;
+          slot.classList.add("ds-hit");
+          if (navigator.vibrate) navigator.vibrate(20);
+          if (i === members.length - 1) { drawAnimatingUntil = 0; renderAll(); }
+        }
+      };
+      setTimeout(spin, 250 + i * 350);
+    });
+  }
+
+  /* ---------- 天選紀錄：當天開獎後把中籤者寫進資料庫存檔（每天一次） ---------- */
+  let recordedDrawDay = "";
+  function recordDrawIfNeeded() {
+    if (!authOn()) return;
+    if (recordedDrawDay === today) return;
+    if (!Draw.isRevealed(today)) return;
+    recordedDrawDay = today;
+    window.Store.recordDraw(today, Draw.drawFor(today));
+  }
+
   /* ---------- 卡片（創始成員＋我自己的粉絲卡） ---------- */
   function cardHTML(id, name, accent, opts) {
     const data = window.Store.data;
@@ -161,19 +251,25 @@
     const operable = canOperate(id);
     const showClaim = authOn() && opts.isFounder && !mem && !myId();
     const showReset = iAmAdmin() && opts.isFounder && mem && !claimedByMe(id);
+    const chosen = opts.chosen;
+    const goldSeal = chosen && done && !!rec.plank;
+    const plankPending = chosen && done && !rec.plank;
 
     return `
-      <article class="card" data-card="${id}" style="--accent:${accent}">
+      <article class="card ${chosen ? "chosen" : ""}" data-card="${id}" style="--accent:${accent}">
         <div class="name-rail">${esc(name)}</div>
+        ${chosen ? `<span class="chosen-badge">天選</span>` : ""}
         <div class="card-main">
           <div class="req">
             <span class="chip">深蹲<b>${CFG.squats}</b></span>
             ${opts.pushups ? `<span class="chip extra">伏地挺身<b>${CFG.pushupsCount}</b></span>` : ""}
+            ${chosen ? `<span class="chip gold">${esc(CFG.draw.task)}</span>` : ""}
           </div>
           ${opts.withBubble && msg ? `
           <button class="bubble ${(!authOn() || claimedByMe(id)) ? "" : "bubble-locked"}" data-say="${id}"
                   aria-label="編輯${esc(name)}的嗆聲">${esc(msg.text)}</button>` : ""}
           ${done ? "" : `<div class="status">尚未打卡</div>`}
+          ${plankPending && operable ? `<button class="undo gold-mend" data-plank="${id}">${esc(CFG.draw.task)}做完了？補蓋金章</button>` : ""}
           ${showClaim ? `<button class="undo" data-claim="${id}">認領這張卡（綁定這支手機）</button>` : ""}
           ${showReset ? `<button class="undo" data-reset="${id}">團主：重設綁定</button>` : ""}
           ${done && operable ? `<button class="undo" data-undo="${id}">蓋錯了？取消打卡</button>` : ""}
@@ -181,22 +277,27 @@
         <button class="stamp-zone ${justStamped ? "splashing" : ""}" data-stamp="${id}"
                 aria-label="${done ? esc(name) + " 今日已完成" : "幫" + esc(name) + "蓋章打卡"}">
           ${done
-            ? sealSVG(justStamped) + (justStamped ? splats() : "")
+            ? sealSVG(justStamped, goldSeal) + (justStamped ? splats() : "")
             : `<span class="stamp-empty"><span class="tap">蓋章</span><span class="hint">按此打卡</span></span>`}
         </button>
-        ${done ? `<span class="done-time"><b>${fmtTime.format(new Date(rec.ts))}</b> 蓋章</span>` : ""}
+        ${done ? `<span class="done-time ${goldSeal ? "gold" : ""}"><b>${fmtTime.format(new Date(rec.ts))}</b> 蓋章</span>` : ""}
       </article>`;
+  }
+
+  function todayWinners() {
+    return Draw.isRevealed(today) ? Draw.drawFor(today) : [];
   }
 
   function renderCards() {
     const wrap = $("#cards");
+    const winners = todayWinners();
     let html = "";
     CFG.members.forEach((m) => {
-      html += cardHTML(m.id, m.name, m.accent, { withBubble: true, pushups: m.pushups, isFounder: true });
+      html += cardHTML(m.id, m.name, m.accent, { withBubble: true, pushups: m.pushups, isFounder: true, chosen: winners.indexOf(m.id) >= 0 });
     });
     const me = myId();
     if (me && me.indexOf("f_") === 0 && memberInfo(me)) {
-      html += cardHTML(me, memberInfo(me).name, fanColor(me), { withBubble: false, pushups: false, isFounder: false });
+      html += cardHTML(me, memberInfo(me).name, fanColor(me), { withBubble: false, pushups: false, isFounder: false, chosen: false });
     }
     wrap.innerHTML = html;
 
@@ -375,16 +476,18 @@
       ? `深蹲 ${CFG.squats} 下＋伏地挺身 ${CFG.pushupsCount} 下`
       : `深蹲 ${CFG.squats} 下`;
     const canSay = !!f; // 嗆聲限創始成員
+    const chosen = todayWinners().indexOf(id) >= 0;
+    const fullTask = task + (chosen ? `＋${CFG.draw.task}<span class="gold-tag">天選加碼</span>` : "");
     const existing = canSay ? (window.Store.data.messages[today] || {})[id] : null;
     openSheet({
-      title: `<b>${esc(name)}</b>｜${task}<br>都做完了嗎？`,
-      confirmText: "完成，蓋章！",
+      title: `<b>${esc(name)}</b>｜${fullTask}<br>都做完了嗎？`,
+      confirmText: chosen ? "完成，蓋金章！" : "完成，蓋章！",
       cancelText: "還沒啦",
       withInput: canSay,
       inputValue: existing ? existing.text : "",
       placeholder: "順便嗆一句（可不填）",
       onConfirm: (text) => {
-        const jobs = [window.Store.checkin(today, id)];
+        const jobs = [window.Store.checkin(today, id, chosen)];
         if (canSay) {
           if (text) jobs.push(window.Store.say(today, id, text));
           else if (existing) jobs.push(window.Store.unsay(today, id));
@@ -457,6 +560,19 @@
     }
 
     if (claimBtn) openClaimSheet(claimBtn.dataset.claim, false);
+
+    const plankBtn = e.target.closest("[data-plank]");
+    if (plankBtn) {
+      const id = plankBtn.dataset.plank;
+      if (authOn() && !canOperate(id)) return;
+      const m = CFG.members.find((x) => x.id === id);
+      openSheet({
+        title: `<b>${m.name}</b>｜天選加碼 ${esc(CFG.draw.task)}<br>做完了嗎？`,
+        confirmText: "完成，補蓋金章！",
+        cancelText: "還沒啦",
+        onConfirm: () => window.Store.markPlank(today, id).catch(() => flashError("補蓋失敗，網路好像不太順，再試一次。"))
+      });
+    }
 
     if (kickBtn) {
       const id = kickBtn.dataset.kick;
@@ -648,12 +764,14 @@
   function renderAll() {
     const data = window.Store.data;
     renderMasthead();
+    renderDraw();
     renderCards();
     renderFans();
     renderWeek(data);
     renderAllDone(data);
     firstRender = false;
     autoClaim();
+    recordDrawIfNeeded();
     renderNotify();
   }
 
@@ -668,8 +786,14 @@
       renderAll();
     } else {
       $("#lateNote").classList.toggle("hidden", !inLateNight());
+      // 頁面開著跨過開獎時刻 → 即時開籤
+      if (CFG.draw && Draw.isRevealed(today) !== lastRevealState) {
+        lastRevealState = Draw.isRevealed(today);
+        renderAll();
+      }
     }
   }, 30000);
+  let lastRevealState = CFG.draw ? Draw.isRevealed(today) : false;
 
   /* ---------- 啟動 ---------- */
   renderMasthead();
