@@ -3,20 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>深蹲俱樂部｜每日打卡簿</title>
-<meta name="description" content="四人深蹲俱樂部每日打卡簿：每天深蹲 40 下，蓋章打卡互相督促。">
+<title>深蹲俱樂部｜第一季結案報告書</title>
+<meta name="description" content="深蹲俱樂部八週挑戰結案報告：9,600 下深蹲的數據分析、頒獎典禮、嗆聲名言錄與深蹲人格籤。">
 <meta name="theme-color" content="#f2e9d3">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="深蹲打卡">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=LXGW+WenKai+TC:wght@400;700&family=Anton&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/report.css">
 </head>
 <body>
 
@@ -25,75 +24,41 @@
     <feTurbulence type="fractalNoise" baseFrequency="0.09" numOctaves="3" seed="7" result="noise"/>
     <feDisplacementMap in="SourceGraphic" in2="noise" scale="2.6"/>
   </filter>
-  <filter id="ink-rough-heavy">
-    <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="3" seed="3" result="noise"/>
-    <feDisplacementMap in="SourceGraphic" in2="noise" scale="5"/>
-  </filter>
 </svg>
 
-<div id="modeBanner" class="mode-banner hidden" role="status"></div>
-
-<header class="masthead">
+<header class="cover">
   <p class="club-line"><span class="en">SQUAT CLUB</span><span class="zh">深蹲俱樂部</span><span class="est">同甘共蹲・est. 2026</span></p>
-  <div class="datepage">
-    <div class="date-meta">
-      <span class="date-month" id="dateMonth"></span>
-      <span class="date-week" id="dateWeek"></span>
-    </div>
-    <div class="date-num-wrap">
-      <span class="date-num" id="dateNum">--</span>
-    </div>
+  <div class="cover-head">
+  <div class="cover-text">
+    <h1 class="cover-title">第一季<br>結案報告書</h1>
+    <p class="cover-sub">八週・六人・一場<br>關於意志力的實驗</p>
+    <p class="cover-period">2026.08.09 — 10.03</p>
   </div>
-  <p class="late-note hidden" id="lateNote">深夜場進行中：凌晨 3 點才換日</p>
-  <p class="goal-strip"><span>今日任務</span><span id="goalText"></span></p>
-  <div class="challenge hidden" id="challengeStrip"></div>
-  <div class="draw-strip hidden" id="drawStrip"></div>
+  <svg class="cover-seal" viewBox="0 0 100 100" aria-hidden="true">
+    <g fill="none" stroke="var(--seal)">
+      <circle cx="50" cy="50" r="45" stroke-width="5"/>
+      <circle cx="50" cy="50" r="36.5" stroke-width="1.8"/>
+    </g>
+    <text x="50" y="47" text-anchor="middle" font-family="LXGW WenKai TC, serif" font-weight="700" font-size="27" fill="var(--seal)" letter-spacing="1">結案</text>
+    <text x="50" y="70" text-anchor="middle" font-family="Anton, sans-serif" font-size="12" fill="var(--seal)" letter-spacing="2">SEASON 1</text>
+  </svg>
+  </div>
+  <p class="paused"><span>公告</span>第一季結案，深蹲暫停中・第二季籌備中</p>
 </header>
 
-<div id="allDone" class="all-done hidden" role="status">
-  <span class="fire">🔥</span> 全員達成！蹲得漂亮，明天見！ <span class="fire">🔥</span>
-</div>
+<main id="report"></main>
 
-<main id="cards" class="cards" aria-label="今日打卡"></main>
-
-<section class="week paper-card">
-  <h2 class="week-title" id="weekTitle">本週戰績</h2>
-  <div id="weekGrid" class="week-grid" role="table" aria-label="打卡紀錄"></div>
+<section class="s2 reveal" id="season2">
+  <span class="stars" aria-hidden="true"></span>
+  <p class="t1">NEXT SEASON</p>
+  <p class="t2">第二季 籌備中</p>
+  <p class="t3">日期<b>待定</b>・規則升級中・敬請期待</p>
 </section>
 
-<button class="join-btn hidden" id="joinBtn">＋ 我也要加入一起蹲</button>
+<footer class="footer"><p>憑良心蓋章・蹲好蹲滿</p></footer>
 
-<section class="paper-card fans hidden" id="fansSection">
-  <h2 class="week-title">一起蹲的鄉民</h2>
-  <div id="fanRows" class="fan-rows"></div>
-</section>
+<div class="tooltip" id="tooltip" role="tooltip"></div>
 
-<section class="paper-card notify hidden" id="notifySection">
-  <h2 class="week-title">打卡通知</h2>
-  <p class="notify-hint" id="notifyHint">點自己的名字，這支手機就會收到大家的打卡與嗆聲通知</p>
-  <div class="notify-names" id="notifyNames"></div>
-  <p class="notify-state hidden" id="notifyState"></p>
-</section>
-
-<footer class="footer">
-  <p>憑良心蓋章・蹲好蹲滿</p>
-</footer>
-
-<div id="sheetOverlay" class="sheet-overlay hidden">
-  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
-    <p class="sheet-title" id="sheetTitle"></p>
-    <input id="sheetInput" class="sheet-input hidden" type="text" maxlength="40" autocomplete="off" enterkeyhint="send">
-    <button id="sheetConfirm" class="btn btn-primary"></button>
-    <button id="sheetCancel" class="btn btn-ghost"></button>
-  </div>
-</div>
-
-<div id="confetti" class="confetti" aria-hidden="true"></div>
-
-<script src="js/config.js"></script>
-<script src="js/draw.js"></script>
-<script src="js/auth.js"></script>
-<script src="js/storage.js"></script>
-<script src="js/app.js"></script>
+<script src="js/report.js"></script>
 </body>
 </html>

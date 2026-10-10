@@ -1,5 +1,7 @@
 # 深蹲俱樂部｜每日打卡簿
 
+> **第一季已結案（2026-08-09 ～ 10-03）**：首頁 `index.html` 是結案報告書，原本的打卡簿移到 `app.html`（暫停中）。報告資料由 `python tools/build_report_data.py` 從 Firebase 產生 `data/report.json`。天選之人在 `js/config.js` 設為 `draw: null` 暫停。
+
 四個朋友的每日運動打卡網頁：每天**深蹲 40 下**（伏地挺身加碼機制內建，`js/config.js` 把成員的 `pushups` 改為 `true` 即啟用）。
 
 - 免登入，開網頁直接蓋章打卡（榮譽制）
