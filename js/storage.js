@@ -3,18 +3,19 @@
      checkins: { "2026-08-09": { "azhong": { ts } } },
      messages: { "2026-08-09": { "azhong": { text, ts } } },
      members:  { "azhong": { name, role: "founder"|"fan", claimedBy: <uid>, ts } },
-     subs:     { "azhong": { "<device>": { endpoint, keys } } }
+     subs:     { "azhong": { "<device>": { endpoint, keys } } },
+     likes:    { "2026-10-19": { "vicky": { "azhong": true } } }   ← 阿忠按了 Vicky 那天的嗆聲
    } */
 (function () {
   const CFG = globalThis.APP_CONFIG;
   const CACHE_KEY = "squat-club-cache-v3";
   const LOCAL_KEY = "squat-club-local-v2";
-  const ROOTS = ["checkins", "messages", "members", "subs"];
+  const ROOTS = ["checkins", "messages", "members", "subs", "likes"];
 
   let data = empty();
   let notify = function () {};
 
-  function empty() { return { checkins: {}, messages: {}, members: {}, subs: {} }; }
+  function empty() { return { checkins: {}, messages: {}, members: {}, subs: {}, likes: {} }; }
   function pick(obj) {
     const out = empty();
     if (obj) ROOTS.forEach((r) => { if (obj[r]) out[r] = obj[r]; });
@@ -169,6 +170,20 @@
       return this._entry("checkins", date, person, body);
     },
     uncheck(date, person) { return this._entry("checkins", date, person, null); },
+    /* 第二季蓋章：可帶 makeup:true（用補蹲卡補昨天） */
+    stamp(date, person, makeup) {
+      const body = { ts: { ".sv": "timestamp" } };
+      if (makeup) body.makeup = true;
+      return this._entry("checkins", date, person, body);
+    },
+    /* 已經蓋章後才補昨天：在今天的紀錄加上 makeup */
+    async markMakeup(date, person) {
+      await this._put(`/checkins/${date}/${person}/makeup.json`, true);
+      if (data.checkins[date] && data.checkins[date][person]) {
+        data.checkins[date][person].makeup = true;
+        notify(data);
+      }
+    },
     /* 天選加碼補做（蓋章後才被抽中時，補蓋金章用） */
     async markPlank(date, person) {
       await this._put(`/checkins/${date}/${person}/plank.json`, { ".sv": "timestamp" });
@@ -179,6 +194,20 @@
     },
     say(date, person, text) { return this._entry("messages", date, person, { text: text, ts: { ".sv": "timestamp" } }); },
     unsay(date, person) { return this._entry("messages", date, person, null); },
+
+    /* 嗆聲按愛心：每人對同一句只能一顆，再按一次收回 */
+    async like(date, target, liker, on) {
+      const day = (data.likes[date] = data.likes[date] || {});
+      const who = (day[target] = day[target] || {});
+      const flip = (v) => { if (v) who[liker] = true; else delete who[liker]; notify(data); };
+      flip(on); // 先亮，手感才即時
+      try {
+        await this._put(`/likes/${date}/${target}/${liker}.json`, on ? true : null);
+      } catch (e) {
+        flip(!on);
+        throw e;
+      }
+    },
 
     /* 成員（認領／加入／移除） */
     async setMember(id, obj) {
@@ -233,6 +262,18 @@
       return this._set("checkins", date, person, body);
     },
     uncheck(date, person) { return this._set("checkins", date, person, null); },
+    stamp(date, person, makeup) {
+      const body = { ts: Date.now() };
+      if (makeup) body.makeup = true;
+      return this._set("checkins", date, person, body);
+    },
+    async markMakeup(date, person) {
+      if (data.checkins[date] && data.checkins[date][person]) {
+        data.checkins[date][person].makeup = true;
+        writeJSON(LOCAL_KEY, data);
+        notify(data);
+      }
+    },
     async markPlank(date, person) {
       if (data.checkins[date] && data.checkins[date][person]) {
         data.checkins[date][person].plank = Date.now();
@@ -242,6 +283,13 @@
     },
     say(date, person, text) { return this._set("messages", date, person, { text: text, ts: Date.now() }); },
     unsay(date, person) { return this._set("messages", date, person, null); },
+    async like(date, target, liker, on) {
+      const day = (data.likes[date] = data.likes[date] || {});
+      const who = (day[target] = day[target] || {});
+      if (on) who[liker] = true; else delete who[liker];
+      writeJSON(LOCAL_KEY, data);
+      notify(data);
+    },
     async setMember(id, obj) {
       if (obj === null) delete data.members[id];
       else data.members[id] = obj;
