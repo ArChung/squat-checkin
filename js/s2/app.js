@@ -1,4 +1,4 @@
-/* 深蹲俱樂部第二季：黑底朱印（s2.html）
+/* 深蹲俱樂部第二季：黑底朱印（首頁 index.html）
    畫面：頂部（日期、今日幾人）→ 我（本週分數、七格、按住蓋章、朱印）→ 三隊排行；蓋完章直接給明日運勢 */
 (function () {
   const CFG = globalThis.APP_CONFIG;
@@ -863,9 +863,10 @@
     }
   }
 
-  function pokeOthers(actorId) {
+  /* 請推播發送器通知其他人；kind：stamp＝蓋章、say＝改了嗆聲 */
+  function pokeOthers(actorId, kind) {
     if (DEMO || !CFG.notifyEndpoint) return;
-    fetch(`${CFG.notifyEndpoint.replace(/\/$/, "")}/notify`, { method: "POST", body: JSON.stringify({ actor: actorId }) }).catch(() => {});
+    fetch(`${CFG.notifyEndpoint.replace(/\/$/, "")}/notify`, { method: "POST", body: JSON.stringify({ actor: actorId, kind: kind || "stamp" }) }).catch(() => {});
   }
 
   document.addEventListener("click", (e) => {
@@ -909,7 +910,7 @@
         title: `<b>${esc(name(id))}</b> 的今日嗆聲`, confirm: "送出！", cancel: "算了",
         input: { value: existing ? existing.text : "", placeholder: existing ? "清空送出＝刪掉這句" : "例：今天你們死定了" },
         onConfirm: (val) => {
-          const job = val.text ? store().say(today, id, val.text).then(() => pokeOthers(id))
+          const job = val.text ? store().say(today, id, val.text).then(() => pokeOthers(id, "say"))
             : existing ? store().unsay(today, id) : Promise.resolve();
           job.catch(() => fail("嗆聲送不出去，網路好像不太順，再試一次。"));
         }

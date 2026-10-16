@@ -22,7 +22,7 @@
     } catch (e) {}
   }
   if (DEMO) me = "azhong"; // 範例只有阿忠那一份
-  if (DEMO) $("#back").href = "s2.html?demo";
+  if (DEMO) $("#back").href = "./?demo";
 
   const view = $("#week");
   const getJSON = (url) => fetch(url, { cache: "no-cache" }).then((r) => (r.ok ? r.json() : null)).catch(() => null);
