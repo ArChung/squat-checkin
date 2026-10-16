@@ -374,8 +374,8 @@ a { color: inherit; }
 .rules-inline { margin-top: 56px; }
 
 /* ============ 提示、紙花 ============ */
-.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 80; width: max-content; max-width: calc(100% - 40px); padding: 13px 18px; font-size: 14px; font-weight: 700; line-height: 1.5; color: var(--paper); background: var(--ink-3); border: 1px solid var(--line-2); border-left: 3px solid var(--signal); transform: translate(-50%, 160%); transition: transform .4s var(--ease-out); pointer-events: none; }
-.toast.show { transform: translate(-50%, 0); }
+.toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 80; width: max-content; max-width: calc(100% - 40px); padding: 13px 18px; font-size: 14px; font-weight: 700; line-height: 1.5; color: var(--paper); background: var(--ink-3); border: 1px solid var(--line-2); border-left: 3px solid var(--signal); transform: translate(-50%, calc(100% + 40px + env(safe-area-inset-bottom))); opacity: 0; visibility: hidden; transition: transform .4s var(--ease-out), opacity .3s, visibility 0s .4s; pointer-events: none; }
+.toast.show { transform: translate(-50%, 0); opacity: 1; visibility: visible; transition: transform .4s var(--ease-out), opacity .3s; }
 .fx { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 75; pointer-events: none; display: none; }
 .fx.on { display: block; }
 
