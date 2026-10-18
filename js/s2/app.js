@@ -1135,7 +1135,7 @@
 
   /* 入場動態：等資料到（最多 0.9 秒）再印出畫面，免得剛印完又整片重畫 */
   Promise.race([Promise.all([dataReady, horoReady]), new Promise((r) => setTimeout(r, 900))])
-    .then(() => Fx.intro(".top > *, #report, #hero > *, #rulesInline > *, #rulesInline li, .league > *, #stalls > *, #notify, #admin, .footer"));
+    .then(() => Fx.intro(".top > *, #report, #hero > *, #hero .claim-list > li, #rulesInline > *, #rulesInline li, .league > *, #stalls > *, #notify, #admin, .footer"));
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     navigator.serviceWorker.register("sw.js").then(renderNotify).catch(() => {});

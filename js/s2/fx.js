@@ -77,66 +77,151 @@
     ensure();
     wipeEl.className = "wipe cover";
     setTimeout(() => {
-      const s = snd(); if (s) s.wipeOut(); // 換頁後還沒點過畫面的話，手機會先靜音
+      const s = snd(); if (s && s.sequence) s.sequence([{ t: 0, name: "wipeOut" }]); // 手機還沒點過畫面時先記著，點下去才補播
       wipeEl.className = "wipe out";
       setTimeout(() => { wipeEl.className = "wipe"; }, OUT_MS);
     }, 80);
   }
 
-  /* 入場：每次打開網址，畫面上看得到的區塊跟著一道朱紅掃描線由上往下印出來，
-     品牌的 S2 和畫面上的印章最後補一下壓印。頁面在 <head> 先加 intro-wait 把內容藏住，資料到了再呼叫這裡。 */
+  /* 入場：每次打開網址，像掃描器開機把畫面印出來（約 1.4 秒）
+     1. 螢幕四角的觀景窗先鎖定
+     2. 朱紅掃描線由上往下，拖著一段網格殘影，右端讀數 SCAN 000→100
+     3. 掃到哪、哪一區就印出來（剛印好的墨比較亮）；標題像訊號對焦抖一下；一週七格由左到右點亮
+     4. 品牌字距收合、S2 和印章壓印、大數字像儀表通電閃一下
+     5. 掃到底：底部一道光從中間展開，四角淡出
+     音效照同一張時間表播（Sfx.sequence）。頁面在 <head> 先加 intro-wait 把內容藏住，資料到了再呼叫這裡。 */
   let introDone = false;
   function intro(selector) {
     if (introDone) return;
     introDone = true;
     const root = document.documentElement;
-    if (REDUCE || !root.animate) { root.classList.remove("intro-wait"); return; }
     root.classList.remove("intro-wait");
+    if (REDUCE || !root.animate) return;
     const vh = window.innerHeight;
-    const SWEEP = 620, DUR = 560, base = wiped ? 300 : 40;
+    const SWEEP = 640, DUR = 560, base = wiped ? 300 : 140, END = base + SWEEP;
     const ease = "cubic-bezier(.16, 1, .3, 1)";
-    const cand = Array.from(document.querySelectorAll(selector)).filter((el) => {
-      const r = el.getBoundingClientRect();
-      return r.width && r.height && r.top < vh && r.bottom > 0;
-    });
-    const blocks = cand.filter((el) => !cand.some((o) => o !== el && el.contains(o))); // 有更細的就用細的
+    const inView = (el) => { const r = el.getBoundingClientRect(); return r.width && r.height && r.top < vh && r.bottom > 0; };
+    const all = (sel) => Array.from(document.querySelectorAll(sel)).filter(inView);
     const at = (el) => base + SWEEP * Math.min(1, Math.max(0, el.getBoundingClientRect().top / vh));
+    const cues = [];
+    const cue = (ms, name, arg) => cues.push({ t: ms / 1000, name, arg });
+    const layer = (cls, html) => {
+      const el = document.createElement("div");
+      el.className = cls;
+      el.setAttribute("aria-hidden", "true");
+      if (html) el.innerHTML = html;
+      document.body.appendChild(el);
+      return el;
+    };
 
-    const line = document.createElement("div");
-    line.className = "intro-scan";
-    line.setAttribute("aria-hidden", "true");
-    document.body.appendChild(line);
-    line.animate([
+    /* 1. 觀景窗四角 */
+    const frame = layer("intro-frame", "<i></i><i></i><i></i><i></i>");
+    frame.querySelectorAll("i").forEach((c, k) => {
+      const dx = k % 2 ? 16 : -16, dy = k < 2 ? -16 : 16;
+      c.animate([{ transform: `translate(${dx}px, ${dy}px)`, opacity: 0 }, { transform: "none", opacity: 1 }],
+        { duration: 260, delay: k * 35, easing: ease, fill: "backwards" });
+    });
+    frame.animate([{ opacity: 1, transform: "none" }, { opacity: 1, transform: "none", offset: 0.8 }, { opacity: 0, transform: "scale(.985)" }],
+      { duration: END + 420, easing: "ease-in", fill: "forwards" }).onfinish = () => frame.remove();
+    cue(0, "introPower");
+    cue(20, "introLock");
+
+    /* 2. 掃描線＋讀數 */
+    const line = layer("intro-scan", "<span>SCAN 000</span>");
+    const scan = line.animate([
       { transform: "translateY(0)", opacity: 0 },
       { transform: `translateY(${vh * 0.04}px)`, opacity: 1, offset: 0.04 },
       { transform: `translateY(${vh * 0.94}px)`, opacity: 1, offset: 0.94 },
       { transform: `translateY(${vh}px)`, opacity: 0 }
-    ], { duration: SWEEP, delay: base, easing: "linear", fill: "backwards" }).onfinish = () => line.remove();
+    ], { duration: SWEEP, delay: base, easing: "linear", fill: "backwards" });
+    scan.onfinish = () => line.remove();
+    const label = line.firstChild;
+    const readout = () => {
+      const t = scan.currentTime;
+      if (t == null || scan.playState === "finished") return;
+      const p = Math.round(Math.max(0, Math.min(1, (t - base) / SWEEP)) * 100);
+      label.textContent = "SCAN " + String(p).padStart(3, "0");
+      requestAnimationFrame(readout);
+    };
+    requestAnimationFrame(readout);
+    cue(base, "introSweep", SWEEP / 1000);
 
-    blocks.forEach((el) => {
+    /* 3. 區塊印出來（有更細的就用細的） */
+    const cand = all(selector);
+    const blocks = cand.filter((el) => !cand.some((o) => o !== el && el.contains(o)));
+    blocks.forEach((el, i) => {
+      const d = at(el);
       el.animate([
-        { opacity: 0, transform: "translateY(14px)", clipPath: "inset(0 0 100% 0)" },
-        { opacity: 1, transform: "none", clipPath: "inset(0 0 0 0)" }
-      ], { duration: DUR, delay: at(el), easing: ease, fill: "backwards" });
+        { opacity: 0, transform: "translateY(14px)", clipPath: "inset(0 0 100% 0)", filter: "brightness(2.2)" },
+        { opacity: 1, filter: "brightness(1.6)", offset: 0.4 },
+        { opacity: 1, transform: "none", clipPath: "inset(0 0 0 0)", filter: "none" }
+      ], { duration: DUR, delay: d, easing: ease, fill: "backwards" });
+      cue(d, "introPrint", i);
     });
 
-    /* 壓印：品牌 S2、畫面上的印章 */
-    document.querySelectorAll(".brand-s, .seal, .mini-seal").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (!r.width || r.top > vh || r.bottom < 0) return;
+    /* 標題：像訊號對焦，左右抖一下才站定 */
+    all(".me-name, .claim-q, .rules-title b, .wk-title").forEach((el) => {
+      const d = at(el) + 70;
       el.animate([
-        { opacity: 0, transform: "scale(1.9) rotate(-10deg)" },
+        { transform: "translateX(-9px) skewX(-14deg)", opacity: 0.25, easing: "steps(1, end)" },
+        { transform: "translateX(6px) skewX(8deg)", opacity: 0.9, easing: "steps(1, end)" },
+        { transform: "translateX(-2px)", opacity: 0.6, easing: "steps(1, end)" },
+        { transform: "none", opacity: 1 }
+      ], { duration: 240, delay: d, fill: "backwards" });
+      cue(d, "introGlitch");
+    });
+
+    /* 一週七格由左到右點亮 */
+    all("#hero .days, .score-card .days").forEach((row) => {
+      const d0 = at(row) + 140;
+      row.querySelectorAll(".d").forEach((cell, i) => {
+        cell.animate([
+          { opacity: 0, transform: "scale(.5)" },
+          { opacity: 1, transform: "scale(1.08)", offset: 0.6 },
+          { opacity: 1, transform: "none" }
+        ], { duration: 260, delay: d0 + i * 42, easing: ease, fill: "backwards" });
+        cue(d0 + i * 42, "introCell", i);
+      });
+    });
+
+    /* 4. 品牌字距收合 */
+    all(".brand-zh").forEach((el) => {
+      const ls = parseFloat(getComputedStyle(el).letterSpacing) || 4;
+      el.animate([{ letterSpacing: ls * 2.6 + "px", opacity: 0 }, { letterSpacing: ls + "px", opacity: 1 }],
+        { duration: 620, delay: base, easing: ease, fill: "backwards" });
+    });
+
+    /* 壓印：S2、大印章重壓，小朱印輕點 */
+    all(".brand-s, .seal, .mini-seal").forEach((el) => {
+      const d = at(el) + 260;
+      const big = !el.classList.contains("mini-seal");
+      el.animate([
+        { opacity: 0, transform: `scale(${big ? 1.9 : 2.4}) rotate(-10deg)` },
         { opacity: 1, transform: "scale(.94) rotate(0)", offset: 0.6 },
         { opacity: 1, transform: "none" }
-      ], { duration: 420, delay: at(el) + 260, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "backwards" });
+      ], { duration: 420, delay: d, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "backwards" });
+      cue(d + 250, big ? "introPress" : "introDot");
     });
+
     /* 大數字閃一下，像儀表剛接上電 */
-    document.querySelectorAll(".me-num, .count, .score-card .big b").forEach((el) => {
-      const r = el.getBoundingClientRect();
-      if (!r.width || r.top > vh || r.bottom < 0) return;
+    all(".me-num, .count, .score-card .big b").forEach((el) => {
+      const d = at(el) + 120;
       el.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }, { opacity: 0.6 }, { opacity: 1 }],
-        { duration: 420, delay: at(el) + 120, easing: "steps(6, jump-none)", fill: "backwards" });
+        { duration: 420, delay: d, easing: "steps(6, jump-none)", fill: "backwards" });
+      [0, 140, 280].forEach((k) => cue(d + k, "introZap"));
     });
+
+    /* 5. 掃到底：底部一道光從中間展開 */
+    const done = layer("intro-done");
+    done.animate([
+      { transform: "scaleX(0)", opacity: 1 },
+      { transform: "scaleX(1)", opacity: 1, offset: 0.45 },
+      { transform: "scaleX(1)", opacity: 0 }
+    ], { duration: 560, delay: END - 30, easing: ease, fill: "backwards" }).onfinish = () => done.remove();
+    cue(END + 40, "introReady");
+
+    const s = snd();
+    if (s && s.sequence) s.sequence(cues);
   }
 
   const TARGET = "button, a[href], label, [role=button]";

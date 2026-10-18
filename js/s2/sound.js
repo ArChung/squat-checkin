@@ -8,7 +8,8 @@
 
   try { if (navigator.audioSession) navigator.audioSession.type = "ambient"; } catch (e) {}
 
-  function ac() {
+  /* 建立音訊（不管現在能不能出聲） */
+  function ensure() {
     if (!enabled) return null;
     if (!ctx) {
       const AC = window.AudioContext || window.webkitAudioContext;
@@ -24,18 +25,45 @@
       noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+      ctx.onstatechange = () => { if (ctx.state === "running") flush(); };
     }
-    if (ctx.state === "suspended") ctx.resume();
     return ctx;
+  }
+
+  /* 現在能出聲才回傳。手機還沒點過畫面時瀏覽器不准出聲，這時不排程，
+     免得第一次觸碰時把之前排的聲音一口氣全部噴出來 */
+  let lastGesture = -1e9; // 剛點過畫面：音訊正在解鎖，這時排的聲音會在幾毫秒內正常播出
+  const resume = (c) => Promise.resolve(c.resume());
+  function ac() {
+    const c = ensure();
+    if (!c) return null;
+    if (c.state === "suspended") resume(c).catch(() => {});
+    return c.state === "running" || performance.now() - lastGesture < 1000 ? c : null;
+  }
+
+  /* 照時間表播的音效（開場用）：能出聲就照表播；還不能就先記著，
+     第一下觸碰解鎖時，把還沒播到的部分接著播，已經過了的就算了 */
+  let queue = [];
+  function flush() {
+    if (!ctx || ctx.state !== "running" || !queue.length) return;
+    const now = performance.now(), q = queue;
+    queue = [];
+    q.forEach((x) => {
+      if (x.when < now - 40) return;
+      const f = Sfx[x.name];
+      if (typeof f === "function") f.call(Sfx, Math.max(0, (x.when - now) / 1000), x.arg);
+    });
   }
 
   /* iOS：第一次觸碰時解鎖音訊 */
   function unlock() {
-    const c = ac();
+    const c = ensure();
     if (!c) return;
+    lastGesture = performance.now();
     const b = c.createBuffer(1, 1, 22050);
     const s = c.createBufferSource();
     s.buffer = b; s.connect(c.destination); s.start(0);
+    if (c.state !== "running") resume(c).then(flush, () => {});
     if (c.state === "running") ["pointerdown", "touchend", "keydown"].forEach((ev) => window.removeEventListener(ev, unlock, true));
   }
   ["pointerdown", "touchend", "keydown"].forEach((ev) => window.addEventListener(ev, unlock, true));
@@ -93,9 +121,40 @@
     setEnabled(on) {
       enabled = !!on;
       try { localStorage.setItem(KEY, on ? "on" : "off"); } catch (e) {}
-      if (on) chime([76, 83], 0, 0.09, 0.07);
-      else if (ctx) ctx.suspend();
+      if (on) { const c = ensure(); if (c) resume(c).then(() => chime([76, 83], 0, 0.09, 0.07), () => {}); }
+      else { queue = []; if (ctx) ctx.suspend(); }
     },
+
+    /* cues：[{ t: 秒, name: 音效名稱, arg }]，音效名稱是下面的函式，第一個參數是延遲幾秒 */
+    sequence(cues) {
+      const c = ensure();
+      if (!c) return;
+      const now = performance.now();
+      cues.forEach((x) => queue.push({ when: now + x.t * 1000, name: x.name, arg: x.arg }));
+      if (c.state === "running") flush();
+      else resume(c).then(flush, () => {});
+    },
+
+    /* 開場：掃描器開機（時間表在 Fx.intro） */
+    introPower(at) {
+      tone({ type: "sine", f: 46, f2: 98, d: 0.6, v: 0.16, a: 0.14, at });
+      noise({ type: "lowpass", f: 180, f2: 1500, d: 0.55, a: 0.22, v: 0.05, at });
+    },
+    introLock(at) { [0, 0.035, 0.07, 0.105].forEach((d, i) => tone({ type: "sine", f: 3000 + i * 380, d: 0.024, v: 0.026, at: at + d })); },
+    introSweep(at, sec) {
+      noise({ type: "bandpass", f: 480, f2: 5200, q: 1.6, d: sec, a: 0.09, v: 0.032, at });
+      tone({ type: "sine", f: 880, f2: 1760, d: sec, v: 0.008, a: 0.12, at });
+    },
+    introPrint(at, i) { tick(at, 0.045, 2300 + (i || 0) * 170); },
+    introGlitch(at) { [0, 0.06, 0.12].forEach((d, i) => tone({ type: "square", f: [740, 310, 1180][i], d: 0.02, v: 0.016, lp: 3200, at: at + d })); },
+    introCell(at, i) { tick(at, 0.026, 3300 + (i || 0) * 140); },
+    introPress(at) {
+      tone({ type: "sine", f: 130, f2: 52, d: 0.24, v: 0.3, at });
+      noise({ type: "lowpass", f: 800, d: 0.05, v: 0.16, at });
+    },
+    introDot(at) { tick(at, 0.035, 1500); },
+    introZap(at) { tone({ type: "square", f: 1150, d: 0.018, v: 0.014, lp: 4200, at }); },
+    introReady(at) { chime([84, 91], at, 0.09, 0.045); },
 
     /* 按鈕鎖定：兩聲很短的數位嗒嗒 */
     tap() {
