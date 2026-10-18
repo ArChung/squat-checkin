@@ -142,5 +142,5 @@
     });
   }
 
-  boot();
+  boot().finally(() => Fx.intro(".wk-top > *, .wk-head > *, #week .envelope, #week .wk-body.show > section, .wk-foot, .wk-empty > *"));
 })();

@@ -40,9 +40,21 @@ body::before {
 .hidden { display: none !important; }
 b.num { font-family: var(--font-num); font-weight: 400; color: var(--seal); letter-spacing: .04em; }
 
+/* ---------- 回打卡頁（固定在左上角，捲到哪都按得到） ---------- */
+.back-s2 {
+  position: fixed; z-index: 40;
+  top: calc(10px + env(safe-area-inset-top)); left: max(10px, calc(50% - 250px));
+  padding: 6px 12px;
+  font-size: 13px; font-weight: 700; letter-spacing: .08em;
+  color: var(--paper-card); background: var(--ink);
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 rgba(38, 33, 25, .25);
+  text-decoration: none;
+}
+
 /* ---------- 封面 ---------- */
 .cover {
-  padding-top: calc(18px + env(safe-area-inset-top));
+  padding-top: calc(54px + env(safe-area-inset-top));
   text-align: center;
   position: relative;
 }
@@ -456,6 +468,7 @@ b.num { font-family: var(--font-num); font-weight: 400; color: var(--seal); lett
 .s2 .t2 { font-size: 30px; font-weight: 700; letter-spacing: .2em; margin: 6px 0 4px; }
 .s2 .t3 { font-size: 14px; letter-spacing: .1em; }
 .s2 .t3 b { color: var(--seal); }
+.s2 .t3 a { color: var(--seal); font-weight: 700; text-decoration: none; border-bottom: 1.5px solid currentColor; }
 .s2 .stars i {
   position: absolute; font-style: normal; color: #e7c063; text-shadow: 0 0 4px rgba(231,192,99,.8);
   opacity: 0; animation: twinkle 2.4s ease-in-out infinite; font-size: var(--sz, 8px);

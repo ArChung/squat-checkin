@@ -1121,7 +1121,7 @@
   /* ---------- 啟動 ---------- */
   if ("scrollRestoration" in history) history.scrollRestoration = "manual"; // 每次打開都從最上面開始
   renderSoundBtn();
-  fetch("data/horoscope.json", { cache: "no-cache" }).then((r) => r.json()).then((j) => { horo = j; renderAll(); }).catch(() => {});
+  const horoReady = fetch("data/horoscope.json", { cache: "no-cache" }).then((r) => r.json()).then((j) => { horo = j; renderAll(); }).catch(() => {});
   if (!DEMO) fetch("data/reports/index.json", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j) => { reports = j; if (j) renderAll(); }).catch(() => {});
 
   /* 先畫骨架（雲端資料還沒到也看得到招牌和攤位），再把「第一次重繪」的資格還回去，避免開頁就把大家當成剛蓋章 */
@@ -1129,9 +1129,13 @@
   firstRender = true;
   prevDone = {}; prevWeekend = {}; prevFixed = {};
 
-  store().init(renderAll)
+  const dataReady = store().init(renderAll)
     .then(() => { fresh = true; renderAll(); })
     .catch(() => { fresh = true; toast("連不上雲端，先顯示上次的紀錄。恢復連線後重新整理即可。", 5000); renderAll(); });
+
+  /* 入場動態：等資料到（最多 0.9 秒）再印出畫面，免得剛印完又整片重畫 */
+  Promise.race([Promise.all([dataReady, horoReady]), new Promise((r) => setTimeout(r, 900))])
+    .then(() => Fx.intro(".top > *, #report, #hero > *, #rulesInline > *, #rulesInline li, .league > *, #stalls > *, #notify, #admin, .footer"));
 
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     navigator.serviceWorker.register("sw.js").then(renderNotify).catch(() => {});

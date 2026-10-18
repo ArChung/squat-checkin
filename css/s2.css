@@ -492,6 +492,14 @@ a { color: inherit; }
 @keyframes sliceIn { from { transform: translateX(-102%); } to { transform: none; } }
 @keyframes sliceOut { from { transform: none; } to { transform: translateX(102%); } }
 
+/* 入場：資料到之前先藏住（萬一程式沒跑起來，1.8 秒後照樣顯示），再由一道掃描線由上往下印出來。
+   掃描線壓在蓋版畫面底下：一打開就跳規則或結算時，看到的是那個畫面自己的切片轉場 */
+.intro-wait .top, .intro-wait #report, .intro-wait #hero, .intro-wait #rulesInline, .intro-wait .league,
+.intro-wait #notify, .intro-wait #admin, .intro-wait .footer, .intro-wait .wk-top, .intro-wait #week { opacity: 0; animation: introSafety 0s 1.8s forwards; }
+@keyframes introSafety { to { opacity: 1; } }
+.intro-scan { position: fixed; left: 0; right: 0; top: 0; z-index: 46; height: 1px; pointer-events: none; background: var(--signal); box-shadow: 0 0 10px 1px rgba(255, 74, 31, .6); }
+.intro-scan::before { content: ""; position: absolute; left: 0; right: 0; bottom: 1px; height: 64px; background: linear-gradient(to bottom, rgba(255, 74, 31, 0), rgba(255, 74, 31, .08)); }
+
 /* 明日運勢：一條掃描線由上往下，把運勢「印」出來 */
 .ft-inner::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; bottom: 0; background: var(--paper); border-top: 2px solid var(--signal); box-shadow: 0 -8px 22px rgba(255, 74, 31, .35); pointer-events: none; opacity: 0; }
 .fortune.open .ft-inner::after { animation: printOut 1.05s .32s var(--ease) both; }

@@ -68,10 +68,12 @@
     setTimeout(() => { location.href = href; }, IN_MS);
   }
 
+  let wiped = false; // 這次是換頁進來的（切片還在抽走）
   function enter() {
     let flag = null;
     try { flag = sessionStorage.getItem(FLAG); sessionStorage.removeItem(FLAG); } catch (e) {}
     if (!flag || REDUCE) return;
+    wiped = true;
     ensure();
     wipeEl.className = "wipe cover";
     setTimeout(() => {
@@ -79,6 +81,62 @@
       wipeEl.className = "wipe out";
       setTimeout(() => { wipeEl.className = "wipe"; }, OUT_MS);
     }, 80);
+  }
+
+  /* 入場：每次打開網址，畫面上看得到的區塊跟著一道朱紅掃描線由上往下印出來，
+     品牌的 S2 和畫面上的印章最後補一下壓印。頁面在 <head> 先加 intro-wait 把內容藏住，資料到了再呼叫這裡。 */
+  let introDone = false;
+  function intro(selector) {
+    if (introDone) return;
+    introDone = true;
+    const root = document.documentElement;
+    if (REDUCE || !root.animate) { root.classList.remove("intro-wait"); return; }
+    root.classList.remove("intro-wait");
+    const vh = window.innerHeight;
+    const SWEEP = 620, DUR = 560, base = wiped ? 300 : 40;
+    const ease = "cubic-bezier(.16, 1, .3, 1)";
+    const cand = Array.from(document.querySelectorAll(selector)).filter((el) => {
+      const r = el.getBoundingClientRect();
+      return r.width && r.height && r.top < vh && r.bottom > 0;
+    });
+    const blocks = cand.filter((el) => !cand.some((o) => o !== el && el.contains(o))); // 有更細的就用細的
+    const at = (el) => base + SWEEP * Math.min(1, Math.max(0, el.getBoundingClientRect().top / vh));
+
+    const line = document.createElement("div");
+    line.className = "intro-scan";
+    line.setAttribute("aria-hidden", "true");
+    document.body.appendChild(line);
+    line.animate([
+      { transform: "translateY(0)", opacity: 0 },
+      { transform: `translateY(${vh * 0.04}px)`, opacity: 1, offset: 0.04 },
+      { transform: `translateY(${vh * 0.94}px)`, opacity: 1, offset: 0.94 },
+      { transform: `translateY(${vh}px)`, opacity: 0 }
+    ], { duration: SWEEP, delay: base, easing: "linear", fill: "backwards" }).onfinish = () => line.remove();
+
+    blocks.forEach((el) => {
+      el.animate([
+        { opacity: 0, transform: "translateY(14px)", clipPath: "inset(0 0 100% 0)" },
+        { opacity: 1, transform: "none", clipPath: "inset(0 0 0 0)" }
+      ], { duration: DUR, delay: at(el), easing: ease, fill: "backwards" });
+    });
+
+    /* 壓印：品牌 S2、畫面上的印章 */
+    document.querySelectorAll(".brand-s, .seal, .mini-seal").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.top > vh || r.bottom < 0) return;
+      el.animate([
+        { opacity: 0, transform: "scale(1.9) rotate(-10deg)" },
+        { opacity: 1, transform: "scale(.94) rotate(0)", offset: 0.6 },
+        { opacity: 1, transform: "none" }
+      ], { duration: 420, delay: at(el) + 260, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "backwards" });
+    });
+    /* 大數字閃一下，像儀表剛接上電 */
+    document.querySelectorAll(".me-num, .count, .score-card .big b").forEach((el) => {
+      const r = el.getBoundingClientRect();
+      if (!r.width || r.top > vh || r.bottom < 0) return;
+      el.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }, { opacity: 0.6 }, { opacity: 1 }],
+        { duration: 420, delay: at(el) + 120, easing: "steps(6, jump-none)", fill: "backwards" });
+    });
   }
 
   const TARGET = "button, a[href], label, [role=button]";
@@ -111,5 +169,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", enter);
   else enter();
 
-  globalThis.Fx = { lock, wipe, go };
+  globalThis.Fx = { lock, wipe, go, intro };
 })();
