@@ -83,7 +83,7 @@
     }, 80);
   }
 
-  /* 入場：每次打開網址，像掃描器開機把畫面印出來（約 1.4 秒）
+  /* 入場：每次打開網址，像掃描器開機把畫面印出來（約 1.5 秒）
      1. 螢幕四角的觀景窗先鎖定
      2. 朱紅掃描線由上往下，拖著一段網格殘影，右端讀數 SCAN 000→100
      3. 掃到哪、哪一區就印出來（剛印好的墨比較亮）；標題像訊號對焦抖一下；一週七格由左到右點亮
@@ -106,7 +106,7 @@
     document.getAnimations().forEach((a) => { if (a.id === "intro") a.cancel(); });
     document.querySelectorAll(".intro-scan, .intro-frame, .intro-done").forEach((el) => el.remove());
     const vh = window.innerHeight;
-    const SWEEP = 1000, DUR = 640, base = wiped ? 300 : 140, END = base + SWEEP;
+    const SWEEP = 820, DUR = 560, base = wiped ? 300 : 80, END = base + SWEEP;
     wiped = false;
     const ease = "cubic-bezier(.16, 1, .3, 1)";
     const inView = (el) => { const r = el.getBoundingClientRect(); return r.width && r.height && r.top < vh && r.bottom > 0; };
@@ -233,7 +233,7 @@
     if (s && s.sequence) s.sequence(cues);
 
     /* 播完才放行重畫 */
-    const gen = ++introGen, total = END + 640;
+    const gen = ++introGen, total = END + DUR;
     busyUntil = Date.now() + total;
     setTimeout(() => {
       if (gen !== introGen) return;

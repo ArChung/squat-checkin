@@ -37,7 +37,7 @@
   function ac() {
     const c = ensure();
     if (!c) return null;
-    if (c.state === "suspended") resume(c).catch(() => {});
+    if (c.state !== "running") resume(c).catch(() => {});
     return c.state === "running" || performance.now() - lastGesture < 1000 ? c : null;
   }
 
@@ -55,18 +55,22 @@
     });
   }
 
-  /* iOS：第一次觸碰時解鎖音訊 */
+  /* iOS：觸碰時解鎖音訊。切到背景回來音訊會被停掉（interrupted），所以每次觸碰都確認一下 */
   function unlock() {
     const c = ensure();
     if (!c) return;
     lastGesture = performance.now();
+    if (c.state === "running") return;
     const b = c.createBuffer(1, 1, 22050);
     const s = c.createBufferSource();
     s.buffer = b; s.connect(c.destination); s.start(0);
-    if (c.state !== "running") resume(c).then(flush, () => {});
-    if (c.state === "running") ["pointerdown", "touchend", "keydown"].forEach((ev) => window.removeEventListener(ev, unlock, true));
+    resume(c).then(flush, () => {});
   }
   ["pointerdown", "touchend", "keydown"].forEach((ev) => window.addEventListener(ev, unlock, true));
+  /* 切回前景：試著把音訊接回去（之前解鎖過的話通常可以，不行就等下一次觸碰） */
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible" && ctx && enabled && ctx.state !== "running") resume(ctx).then(flush, () => {});
+  });
 
   const midi = (n) => 440 * Math.pow(2, (n - 69) / 12);
 
@@ -137,24 +141,26 @@
 
     /* 開場：掃描器開機（時間表在 Fx.intro） */
     introPower(at) {
-      tone({ type: "sine", f: 46, f2: 98, d: 0.6, v: 0.16, a: 0.14, at });
-      noise({ type: "lowpass", f: 180, f2: 1500, d: 0.55, a: 0.22, v: 0.05, at });
+      tone({ type: "sine", f: 46, f2: 98, d: 0.5, v: 0.16, a: 0.12, at });
+      tone({ type: "triangle", f: 220, f2: 440, d: 0.42, v: 0.05, a: 0.1, lp: 2400, at });
+      noise({ type: "bandpass", f: 500, f2: 2600, q: 0.9, d: 0.4, a: 0.18, v: 0.06, at });
     },
-    introLock(at) { [0, 0.035, 0.07, 0.105].forEach((d, i) => tone({ type: "sine", f: 3000 + i * 380, d: 0.024, v: 0.026, at: at + d })); },
+    introLock(at) { [0, 0.035, 0.07, 0.105].forEach((d, i) => tone({ type: "sine", f: 3000 + i * 380, d: 0.026, v: 0.045, at: at + d })); },
     introSweep(at, sec) {
-      noise({ type: "bandpass", f: 480, f2: 5200, q: 1.6, d: sec, a: 0.09, v: 0.032, at });
-      tone({ type: "sine", f: 880, f2: 1760, d: sec, v: 0.008, a: 0.12, at });
+      noise({ type: "bandpass", f: 600, f2: 5200, q: 1.4, d: sec, a: 0.08, v: 0.06, at });
+      tone({ type: "sine", f: 880, f2: 1760, d: sec, v: 0.018, a: 0.1, at });
     },
-    introPrint(at, i) { tick(at, 0.045, 2300 + (i || 0) * 170); },
-    introGlitch(at) { [0, 0.06, 0.12].forEach((d, i) => tone({ type: "square", f: [740, 310, 1180][i], d: 0.02, v: 0.016, lp: 3200, at: at + d })); },
-    introCell(at, i) { tick(at, 0.026, 3300 + (i || 0) * 140); },
+    introPrint(at, i) { tick(at, 0.075, 2300 + (i || 0) * 170); },
+    introGlitch(at) { [0, 0.06, 0.12].forEach((d, i) => tone({ type: "square", f: [740, 310, 1180][i], d: 0.022, v: 0.03, lp: 3200, at: at + d })); },
+    introCell(at, i) { tick(at, 0.05, 3300 + (i || 0) * 140); },
     introPress(at) {
       tone({ type: "sine", f: 130, f2: 52, d: 0.24, v: 0.3, at });
-      noise({ type: "lowpass", f: 800, d: 0.05, v: 0.16, at });
+      tone({ type: "sine", f: 300, f2: 140, d: 0.12, v: 0.16, at });
+      noise({ type: "bandpass", f: 900, q: 1.1, d: 0.06, v: 0.2, at });
     },
-    introDot(at) { tick(at, 0.035, 1500); },
-    introZap(at) { tone({ type: "square", f: 1150, d: 0.018, v: 0.014, lp: 4200, at }); },
-    introReady(at) { chime([84, 91], at, 0.09, 0.045); },
+    introDot(at) { tick(at, 0.06, 1500); },
+    introZap(at) { tone({ type: "square", f: 1150, d: 0.02, v: 0.03, lp: 4200, at }); },
+    introReady(at) { chime([84, 91], at, 0.09, 0.07); },
 
     /* 按鈕鎖定：兩聲很短的數位嗒嗒 */
     tap() {
