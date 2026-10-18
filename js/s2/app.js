@@ -1050,7 +1050,12 @@
     });
   }
 
+  let renderLater = false;
   function renderAll() {
+    if (Fx.introBusy()) {
+      if (!renderLater) { renderLater = true; Fx.afterIntro(() => { renderLater = false; renderAll(); }); }
+      return;
+    }
     const v = buildView();
     const flips = captureFlip();
     renderHeader(v);

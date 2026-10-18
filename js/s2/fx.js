@@ -89,16 +89,25 @@
      3. 掃到哪、哪一區就印出來（剛印好的墨比較亮）；標題像訊號對焦抖一下；一週七格由左到右點亮
      4. 品牌字距收合、S2 和印章壓印、大數字像儀表通電閃一下
      5. 掃到底：底部一道光從中間展開，四角淡出
-     音效照同一張時間表播（Sfx.sequence）。頁面在 <head> 先加 intro-wait 把內容藏住，資料到了再呼叫這裡。 */
-  let introDone = false;
+     音效照同一張時間表播（Sfx.sequence）。頁面在 <head> 先加 intro-wait 把內容藏住，資料到了再呼叫 intro()；
+     之後每次切回 App（在背景待超過 0.6 秒）都重播一次。播放中畫面先不重畫（afterIntro），免得印到一半整區被換掉。 */
+  let introSel = null, introGen = 0, busyUntil = 0, afterFns = [];
   function intro(selector) {
-    if (introDone) return;
-    introDone = true;
-    const root = document.documentElement;
-    root.classList.remove("intro-wait");
-    if (REDUCE || !root.animate) return;
+    if (introSel) return;
+    introSel = selector;
+    document.documentElement.classList.remove("intro-wait");
+    play(selector);
+  }
+  const introBusy = () => Date.now() < busyUntil;
+  function afterIntro(fn) { if (introBusy()) afterFns.push(fn); else fn(); }
+
+  function play(selector) {
+    if (REDUCE || !document.documentElement.animate) return;
+    document.getAnimations().forEach((a) => { if (a.id === "intro") a.cancel(); });
+    document.querySelectorAll(".intro-scan, .intro-frame, .intro-done").forEach((el) => el.remove());
     const vh = window.innerHeight;
-    const SWEEP = 640, DUR = 560, base = wiped ? 300 : 140, END = base + SWEEP;
+    const SWEEP = 1000, DUR = 640, base = wiped ? 300 : 140, END = base + SWEEP;
+    wiped = false;
     const ease = "cubic-bezier(.16, 1, .3, 1)";
     const inView = (el) => { const r = el.getBoundingClientRect(); return r.width && r.height && r.top < vh && r.bottom > 0; };
     const all = (sel) => Array.from(document.querySelectorAll(sel)).filter(inView);
@@ -119,10 +128,10 @@
     frame.querySelectorAll("i").forEach((c, k) => {
       const dx = k % 2 ? 16 : -16, dy = k < 2 ? -16 : 16;
       c.animate([{ transform: `translate(${dx}px, ${dy}px)`, opacity: 0 }, { transform: "none", opacity: 1 }],
-        { duration: 260, delay: k * 35, easing: ease, fill: "backwards" });
+        { id: "intro", duration: 260, delay: k * 35, easing: ease, fill: "backwards" });
     });
     frame.animate([{ opacity: 1, transform: "none" }, { opacity: 1, transform: "none", offset: 0.8 }, { opacity: 0, transform: "scale(.985)" }],
-      { duration: END + 420, easing: "ease-in", fill: "forwards" }).onfinish = () => frame.remove();
+      { id: "intro", duration: END + 420, easing: "ease-in", fill: "forwards" }).onfinish = () => frame.remove();
     cue(0, "introPower");
     cue(20, "introLock");
 
@@ -133,7 +142,7 @@
       { transform: `translateY(${vh * 0.04}px)`, opacity: 1, offset: 0.04 },
       { transform: `translateY(${vh * 0.94}px)`, opacity: 1, offset: 0.94 },
       { transform: `translateY(${vh}px)`, opacity: 0 }
-    ], { duration: SWEEP, delay: base, easing: "linear", fill: "backwards" });
+    ], { id: "intro", duration: SWEEP, delay: base, easing: "linear", fill: "backwards" });
     scan.onfinish = () => line.remove();
     const label = line.firstChild;
     const readout = () => {
@@ -155,7 +164,7 @@
         { opacity: 0, transform: "translateY(14px)", clipPath: "inset(0 0 100% 0)", filter: "brightness(2.2)" },
         { opacity: 1, filter: "brightness(1.6)", offset: 0.4 },
         { opacity: 1, transform: "none", clipPath: "inset(0 0 0 0)", filter: "none" }
-      ], { duration: DUR, delay: d, easing: ease, fill: "backwards" });
+      ], { id: "intro", duration: DUR, delay: d, easing: ease, fill: "backwards" });
       cue(d, "introPrint", i);
     });
 
@@ -167,7 +176,7 @@
         { transform: "translateX(6px) skewX(8deg)", opacity: 0.9, easing: "steps(1, end)" },
         { transform: "translateX(-2px)", opacity: 0.6, easing: "steps(1, end)" },
         { transform: "none", opacity: 1 }
-      ], { duration: 240, delay: d, fill: "backwards" });
+      ], { id: "intro", duration: 240, delay: d, fill: "backwards" });
       cue(d, "introGlitch");
     });
 
@@ -179,7 +188,7 @@
           { opacity: 0, transform: "scale(.5)" },
           { opacity: 1, transform: "scale(1.08)", offset: 0.6 },
           { opacity: 1, transform: "none" }
-        ], { duration: 260, delay: d0 + i * 42, easing: ease, fill: "backwards" });
+        ], { id: "intro", duration: 260, delay: d0 + i * 42, easing: ease, fill: "backwards" });
         cue(d0 + i * 42, "introCell", i);
       });
     });
@@ -188,7 +197,7 @@
     all(".brand-zh").forEach((el) => {
       const ls = parseFloat(getComputedStyle(el).letterSpacing) || 4;
       el.animate([{ letterSpacing: ls * 2.6 + "px", opacity: 0 }, { letterSpacing: ls + "px", opacity: 1 }],
-        { duration: 620, delay: base, easing: ease, fill: "backwards" });
+        { id: "intro", duration: 620, delay: base, easing: ease, fill: "backwards" });
     });
 
     /* 壓印：S2、大印章重壓，小朱印輕點 */
@@ -199,7 +208,7 @@
         { opacity: 0, transform: `scale(${big ? 1.9 : 2.4}) rotate(-10deg)` },
         { opacity: 1, transform: "scale(.94) rotate(0)", offset: 0.6 },
         { opacity: 1, transform: "none" }
-      ], { duration: 420, delay: d, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "backwards" });
+      ], { id: "intro", duration: 420, delay: d, easing: "cubic-bezier(.3, 0, .2, 1)", fill: "backwards" });
       cue(d + 250, big ? "introPress" : "introDot");
     });
 
@@ -207,7 +216,7 @@
     all(".me-num, .count, .score-card .big b").forEach((el) => {
       const d = at(el) + 120;
       el.animate([{ opacity: 0 }, { opacity: 1 }, { opacity: 0.25 }, { opacity: 1 }, { opacity: 0.6 }, { opacity: 1 }],
-        { duration: 420, delay: d, easing: "steps(6, jump-none)", fill: "backwards" });
+        { id: "intro", duration: 420, delay: d, easing: "steps(6, jump-none)", fill: "backwards" });
       [0, 140, 280].forEach((k) => cue(d + k, "introZap"));
     });
 
@@ -217,12 +226,31 @@
       { transform: "scaleX(0)", opacity: 1 },
       { transform: "scaleX(1)", opacity: 1, offset: 0.45 },
       { transform: "scaleX(1)", opacity: 0 }
-    ], { duration: 560, delay: END - 30, easing: ease, fill: "backwards" }).onfinish = () => done.remove();
+    ], { id: "intro", duration: 560, delay: END - 30, easing: ease, fill: "backwards" }).onfinish = () => done.remove();
     cue(END + 40, "introReady");
 
     const s = snd();
     if (s && s.sequence) s.sequence(cues);
+
+    /* 播完才放行重畫 */
+    const gen = ++introGen, total = END + 640;
+    busyUntil = Date.now() + total;
+    setTimeout(() => {
+      if (gen !== introGen) return;
+      busyUntil = 0;
+      afterFns.splice(0).forEach((f) => { try { f(); } catch (e) {} });
+    }, total);
   }
+
+  /* 切回 App、或瀏覽器從上一頁的快取還原：重播一次 */
+  let hiddenAt = 0;
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") { hiddenAt = Date.now(); return; }
+    if (!introSel || !hiddenAt || Date.now() - hiddenAt < 600) return;
+    hiddenAt = 0;
+    play(introSel);
+  });
+  window.addEventListener("pageshow", (e) => { if (e.persisted && introSel) play(introSel); });
 
   const TARGET = "button, a[href], label, [role=button]";
 
@@ -254,5 +282,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", enter);
   else enter();
 
-  globalThis.Fx = { lock, wipe, go, intro };
+  globalThis.Fx = { lock, wipe, go, intro, introBusy, afterIntro };
 })();
