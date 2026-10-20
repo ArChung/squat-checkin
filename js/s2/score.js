@@ -1,5 +1,5 @@
 /* 第二季計分：分數全部從蓋章紀錄即時算出來，不另外存。
-   規則：每週一凌晨 3 點歸零；某天沒蓋章，隔天凌晨 3 點扣 10（分數是 0 或負的，扣最少的贏）；
+   規則：每週一凌晨 3 點回到 100 分；某天沒蓋章，隔天凌晨 3 點扣 10（最低 30，隊伍是兩人加總）；
    補蹲卡＝隔天蓋章時帶 makeup:true，把「昨天」扣的 10 分還回來，每人每週一張、週一不能補週日。 */
 (function () {
   const CFG = globalThis.APP_CONFIG;
@@ -52,7 +52,7 @@
     const usedOn = days.find((k) => k <= today && rec(ck, k, id) && rec(ck, k, id).makeup) || null;
     return {
       id, days: out, missed,
-      score: -S.missPenalty * missed,
+      score: (S.weekBase || 0) - S.missPenalty * missed,
       cardUsed: !!usedOn, usedOn
     };
   }

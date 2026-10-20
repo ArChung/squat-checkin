@@ -23,8 +23,9 @@
   const teamName = (t) => t.members.map(name).join("＋");
   const dayLabel = (k) => `${S2.md(k)}（${WD[S2.wd(k)]}）`;
   const dayStartTs = (k) => Date.parse(`${k}T${HH}:00:00+08:00`);
-  const fmt = (n) => (n < 0 ? "−" + Math.abs(n) : String(n)); // 扣分用全形減號
-  const neg = (n) => (n < 0 ? "neg" : "");
+  const fmt = (n) => (n < 0 ? "−" + Math.abs(n) : String(n)); // 負數用全形減號
+  const BASE = S.weekBase || 0;
+  const neg = (n, full) => (n < (full == null ? BASE : full) ? "neg" : ""); // 被扣過分就變朱紅
 
   /* ---------- 這支手機記得的事（看過哪些動畫、戳過哪些格子） ---------- */
   const LS = {
@@ -71,6 +72,8 @@
   let relightPending = false;
   let ceremonyBusy = false;
   let autoClaimTried = false;
+  let entryPending = true;   // 這次是剛打開／剛切回來：全員達成的話再放一次慶祝
+  let heroHTML = "";
 
   /* ---------- 小零件 ---------- */
   const DAY_LABEL = { done: "有蹲", future: "還沒到", today: "今天還沒蹲", missed: "漏了，扣 10 分", fixed: "補回來了" };
@@ -131,6 +134,7 @@
       const val = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
       if (val !== last) {
         el.textContent = fmt(val);
+        if (el.dataset.text != null) el.dataset.text = fmt(val);
         if (tick && Math.floor(val / 10) !== Math.floor(last / 10)) Sfx.countTick();
         last = val;
       }
@@ -154,8 +158,8 @@
     if (ph === "pre") {
       rank = S.teams.map((t) => ({
         id: t.id, color: t.color, members: t.members, rank: 0, weekend: {},
-        score: 0,
-        people: t.members.map((m) => ({ id: m, score: 0, days: [0, 1, 2, 3, 4, 5, 6].map(() => ({ state: "future" })) }))
+        score: BASE * t.members.length,
+        people: t.members.map((m) => ({ id: m, score: BASE, days: [0, 1, 2, 3, 4, 5, 6].map(() => ({ state: "future" })) }))
       }));
     } else if (ph === "post") {
       rank = S2.ranking(ck(), S.weeks - 1, S2.addDays(S2.END, 1));
@@ -259,6 +263,7 @@
     const el = $("#hero");
     const id = v.me;
     el.className = "hero";
+    if (!id || v.ph !== "on") heroHTML = ""; // 只有開季中的畫面會跳過重畫
     if (!id) { el.innerHTML = claimHTML(); return; }
 
     if (v.ph === "pre") {
@@ -279,7 +284,7 @@
       el.innerHTML = `
         <div class="me-head"><h2 class="me-name">${esc(name(id))}</h2></div>
         <p class="me-label">六週合計</p>
-        <div class="me-score"><span class="me-num ${neg(total)}">${fmt(total)}</span><span class="me-unit">分</span></div>
+        <div class="me-score"><span class="me-num ${neg(total, BASE * S.weeks)}">${fmt(total)}</span><span class="me-unit">分</span></div>
         <ol class="wk-list">${scores.map((sc, i) => `<li><span>第 ${i + 1} 週</span><b>${fmt(sc)}</b></li>`).join("")}</ol>`;
       return;
     }
@@ -302,14 +307,53 @@
         (partner && S2.rec(ck(), today, partner) ? `<p class="nudge">${esc(name(partner))} 已經蹲了，就差你</p>` : "");
     }
 
-    el.innerHTML = `
+    /* 內容沒變就不重畫：剛蓋章時雲端會再送一次確認，整區重畫會把壓印和通電動畫切掉 */
+    const html = `
       <div class="me-head"><h2 class="me-name">${esc(name(id))}</h2>
         ${mk === "ok" && !r ? `<button class="chip-makeup" type="button" data-act="ticket">補蹲卡・補昨天</button>` : ""}</div>
-      ${r ? sealHTML("蹲", "seal-me" + (v.just[id] ? " press" : "")) : ""}
+      ${r ? sealHTML("蹲", "seal-me") : ""}
       <p class="me-label">本週分數</p>
-      <div class="me-score"><span class="me-num ${neg(pw.score)}" data-count="me" data-val="${pw.score}">${fmt(pw.score)}</span><span class="me-unit">分</span></div>
+      <div class="me-score ${r ? "lit" : ""}"><span class="me-num ${neg(pw.score)}" data-count="me" data-val="${pw.score}" data-text="${fmt(pw.score)}">${fmt(pw.score)}</span><span class="me-unit">分</span></div>
       ${bulbsHTML(pw, { cls: "days-lg" + (v.relight ? " relight" : ""), fixAnim: v.fixAnim })}
       <div class="act">${act}</div>`;
+    if (html !== heroHTML) { el.innerHTML = html; heroHTML = html; }
+    if (r && v.just[id]) {
+      const seal = el.querySelector(".seal-me");
+      if (seal) { seal.classList.remove("press"); void seal.offsetWidth; seal.classList.add("press"); }
+      setTimeout(igniteScore, 260);
+    }
+  }
+
+  /* 分數通電：像霓虹燈管剛接上電——閃幾下、紅藍錯位、一道光刷過，最後一直亮著 */
+  function igniteScore() {
+    const box = document.querySelector("#hero .me-score");
+    const num = box && box.querySelector(".me-num");
+    if (!num) return;
+    num.querySelectorAll(".me-ghost").forEach((g) => g.remove());
+    Sfx.neon();
+    if (REDUCE || !num.animate) return;
+    box.classList.remove("ignite"); void box.offsetWidth; box.classList.add("ignite");
+    setTimeout(() => box.classList.remove("ignite"), 1400);
+    num.animate([
+      { opacity: 0.15, filter: "brightness(.6)" }, { opacity: 1, filter: "brightness(2)", offset: 0.06 },
+      { opacity: 0.2, offset: 0.12 }, { opacity: 1, offset: 0.2 }, { opacity: 0.45, offset: 0.26 },
+      { opacity: 1, filter: "brightness(1.8)", offset: 0.4 }, { opacity: 1, filter: "brightness(1)" }
+    ], { duration: 1100, easing: "steps(1, end)" });
+    [["#2de2e6", -1], ["#ff2a6d", 1]].forEach(([col, dir]) => {
+      const g = document.createElement("span");
+      g.className = "me-ghost";
+      g.textContent = num.dataset.text || num.textContent;
+      g.style.color = col;
+      num.appendChild(g);
+      g.animate([
+        { transform: `translateX(${dir * 7}px)`, clipPath: "inset(8% 0 62% 0)", opacity: 0.9 },
+        { transform: `translateX(${dir * -5}px)`, clipPath: "inset(48% 0 22% 0)", opacity: 0.8 },
+        { transform: `translateX(${dir * 4}px)`, clipPath: "inset(24% 0 46% 0)", opacity: 0.85 },
+        { transform: `translateX(${dir * -3}px)`, clipPath: "inset(70% 0 6% 0)", opacity: 0.6 },
+        { transform: `translateX(${dir * 2}px)`, clipPath: "inset(0 0 0 0)", opacity: 0.35 },
+        { transform: "none", clipPath: "inset(0 0 0 0)", opacity: 0 }
+      ], { duration: 760, easing: "steps(1, end)" }).onfinish = () => g.remove();
+    });
   }
 
   /* ---------- 今日排行 ---------- */
@@ -470,9 +514,9 @@
   function rulesHTML() {
     const rules = [
       ["每天 40 下", "凌晨 3 點前蓋章，都算當天。"],
-      ["漏一天扣 10 分", "每週一歸零。"],
+      ["每週 100 分", "漏一天扣 10 分，每週一重來。"],
       ["補蹲卡", "每週一張：漏了隔天蹲 80 下補回來。"],
-      ["夫妻同隊", "兩人加起來，扣最少的贏。"]
+      ["夫妻同隊", "兩人加起來，分數高的贏。"]
     ];
     return `<div class="rules-title"><span class="kicker">Season 2</span><b>第二季規則</b><span>${dayLabel(S.start)} 開蹲・共 ${S.weeks} 週</span></div>
       <ol class="rules">${rules.map(([h, line], i) => `<li><span class="no">${two(i + 1)}</span><div><h4>${h}</h4><p>${line}</p></div></li>`).join("")}</ol>`;
@@ -604,7 +648,41 @@
     $("#stageInner").querySelector('[data-cer="ok"]').onclick = () => finishCeremony(id, "final");
   }
 
-  function showAllDone(id) {
+  /* 今天最先兩人都蹲完的隊伍（還沒有就是 null） */
+  function firstTeam(tc) {
+    let best = null;
+    S.teams.forEach((t) => {
+      const ts = t.members.map((m) => (tc[m] ? Number(tc[m].ts) || 1 : 0));
+      if (ts.some((x) => !x)) return;
+      const at = Math.max(...ts);
+      if (!best || at < best.at) best = { team: t, at };
+    });
+    return best;
+  }
+
+  /* 今日第一：每人每天看一次。頭香印重重壓下、背後放射光、紙花 */
+  function showFirst(id, f) {
+    const mine = f.team.members.indexOf(id) >= 0;
+    stage(`<div class="cer cer-first">
+      <p class="cer-kicker">${dot(today)} 週${WD[S2.wd(today)]}</p>
+      <div class="first-mark" aria-hidden="true"><span class="first-rays"></span>${sealHTML("頭香", "first-seal")}</div>
+      <h2 class="cer-title">今日第一</h2>
+      <p class="first-team">${esc(teamName(f.team))}</p>
+      <p class="first-time">${f.at > 1 ? `<b>${S2.hm(f.at)}</b>` : ""}兩人都蹲完</p>
+      <p class="cer-sub">${mine ? "你們是今天最快的一隊" : "今天最快蹲完的一隊"}</p>
+      <div class="cer-btns"><button class="btn-primary paper" type="button" data-cer="ok">${mine ? "收下" : "知道了"}</button></div>
+    </div>`, "s-first" + (mine ? " mine" : ""));
+    const WIPE = 340;
+    setTimeout(() => { Sfx.thump(); $("#stage").classList.add("hit"); if (navigator.vibrate && mine) navigator.vibrate(40); }, WIPE + 380);
+    setTimeout(() => {
+      if (mine) { Sfx.fanfare(); confetti(110, 0); } else { Sfx.ignite(); confetti(40, 0); }
+      $("#stage").classList.add("after");
+    }, WIPE + 640);
+    $("#stageInner").querySelector('[data-cer="ok"]').onclick = () => finishCeremony(id, "first" + today);
+  }
+
+  function showAllDone(id, replay) {
+    entryPending = false;
     const tc = ck()[today] || {};
     const recs = ORDER.map((x) => ({ id: x, ts: Number((tc[x] || {}).ts) || 0 })).sort((a, b) => a.ts - b.ts);
     const STEP = 260, FIRST = 450;
@@ -616,8 +694,12 @@
     </div>`, "s-all");
     const WIPE = 340;
     recs.forEach((r, i) => setTimeout(() => Sfx.thump(), WIPE + FIRST + i * STEP + 120));
-    setTimeout(() => { Sfx.allDone(); confetti(120, 0); $("#stage").classList.add("after"); }, WIPE + FIRST + recs.length * STEP + 260);
-    $("#stageInner").querySelector('[data-cer="ok"]').onclick = () => finishCeremony(id, "all" + today);
+    const END = WIPE + FIRST + recs.length * STEP + 260;
+    setTimeout(() => { Sfx.allDone(); confetti(120, 0); $("#stage").classList.add("after"); }, END);
+    let closed = false;
+    const close = () => { if (closed) return; closed = true; finishCeremony(id, "all" + today); };
+    $("#stageInner").querySelector('[data-cer="ok"]').onclick = close;
+    if (replay) setTimeout(() => { if ($("#stage").classList.contains("s-all")) close(); }, END + 2600);
   }
 
   function runCeremonies() {
@@ -645,9 +727,16 @@
         if (st === "missed" && !seen["miss" + y]) run = () => showDeduct(id, y);
       }
     }
-    if (!run && ph === "on" && !seen["all" + today]) {
+    if (!run && ph === "on") {
       const tc = ck()[today] || {};
-      if (ORDER.every((x) => tc[x])) run = () => setTimeout(() => showAllDone(id), 1100);
+      const all = ORDER.every((x) => tc[x]);
+      const first = firstTeam(tc);
+      const mineFirst = !!first && first.team.members.indexOf(id) >= 0;
+      if (first && !seen["first" + today] && (!all || mineFirst)) run = () => setTimeout(() => showFirst(id, first), 700);
+      else if (all && (!seen["all" + today] || entryPending)) {
+        const replay = !!seen["all" + today];
+        run = () => setTimeout(() => showAllDone(id, replay), replay ? 300 : 1100);
+      } else if (!all) entryPending = false;
     }
     return run;
   }
@@ -1106,8 +1195,11 @@
   const fetchVersion = () => fetch("version.json", { cache: "no-store" }).then((r) => r.json()).then((j) => j.v).catch(() => null);
   fetchVersion().then((v) => { bootVersion = v; });
   let lastVis = 0;
+  let hiddenAt = 0;
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "visible") return;
+    if (document.visibilityState !== "visible") { hiddenAt = Date.now(); return; }
+    if (hiddenAt && Date.now() - hiddenAt > 600) { entryPending = true; Fx.afterIntro(runCeremonies); }
+    hiddenAt = 0;
     dayCheck();
     if (Date.now() - lastVis < 60000) return;
     lastVis = Date.now();

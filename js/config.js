@@ -37,10 +37,11 @@ globalThis.APP_CONFIG = {
   /* 嗆聲留言字數上限 */
   maxSayLength: 40,
 
-  /* 第二季：漏一天扣 10 分、每週一歸零、夫妻兩人加起來比誰扣最少、每人每週一張補蹲卡（首頁 index.html 使用） */
+  /* 第二季：每週 100 分起跳、漏一天扣 10 分、每週一重來、夫妻兩人加起來比分數、每人每週一張補蹲卡（首頁 index.html 使用） */
   season2: {
     start: "2026-10-19",
     weeks: 6,
+    weekBase: 100,
     missPenalty: 10,
     teams: [
       { id: "zv", members: ["azhong", "vicky"],    color: "#16211d" },

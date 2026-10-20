@@ -22,6 +22,7 @@ DAY_START_HOUR = 3
 # 跟 js/config.js 的 season2 一致
 START = dt.date(2026, 10, 19)
 WEEKS = 6
+BASE = 100     # 每週起跳分數
 PENALTY = 10
 TEAMS = [("zv", ["azhong", "vicky"]), ("gb", ["guantou", "xiaobai"]), ("jd", ["xiaoj", "dami"])]
 NAMES = {"azhong": "阿忠", "vicky": "Vicky", "guantou": "罐頭", "xiaobai": "小白", "xiaoj": "小J", "dami": "大瞇"}
@@ -107,7 +108,7 @@ def person_week(db, pid, w):
         else:
             states.append("missed"); missed += 1
     used = any((rec(db, d, pid) or {}).get("makeup") for d in days)
-    return {"states": states, "score": -PENALTY * missed, "cardUsed": used}
+    return {"states": states, "score": BASE - PENALTY * missed, "cardUsed": used}
 
 
 def ranking(db, w):

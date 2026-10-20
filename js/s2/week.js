@@ -100,7 +100,7 @@
       <div class="wk-body ${opened ? "show" : ""}" id="body">
         <section class="score-card">
           <p class="blk-label">本週成績單</p>
-          <div class="big"><b class="${p.score < 0 ? "neg" : ""}">${fmt(p.score)}</b><span>分</span></div>
+          <div class="big"><b class="${p.score < (S.weekBase || 0) ? "neg" : ""}">${fmt(p.score)}</b><span>分</span></div>
           <ol class="days days-lg">${days}</ol>
           <dl class="rc-list">
             <div><dt>有蹲</dt><dd>${doneDays} 天</dd></div>

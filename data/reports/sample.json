@@ -6,23 +6,23 @@
   "teams": [
     {
       "id": "zv",
-      "score": -60,
+      "score": 140,
       "rank": 1
     },
     {
       "id": "gb",
-      "score": -80,
+      "score": 120,
       "rank": 2
     },
     {
       "id": "jd",
-      "score": -90,
+      "score": 110,
       "rank": 3
     }
   ],
   "people": {
     "azhong": {
-      "score": -30,
+      "score": 70,
       "days": [
         "done",
         "done",

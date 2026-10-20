@@ -126,11 +126,15 @@ a { color: inherit; }
 .days-lg { gap: 6px; margin-top: 26px; }
 .days-lg .d i { height: 44px; border-radius: 2px; }
 .days-lg .d span { margin-top: 9px; }
-.days-sm { grid-template-columns: repeat(7, 8px); gap: 3px; justify-content: end; }
-.days-sm .d i { height: 14px; }
+/* 排行的小燈號：斜切的細直條，像儀表刻度 */
+.days-sm { grid-template-columns: repeat(7, 4px); gap: 5px; justify-content: end; padding-right: 4px; }
+.days-sm .d i { height: 17px; border: 0; transform: skewX(-22deg); background: rgba(239, 236, 229, .1); }
 .days-sm .d span { display: none; }
-.days-sm .d-today i { border-color: var(--line-2); }
+.days-sm .d-done i { background: var(--paper); box-shadow: 0 0 6px rgba(239, 236, 229, .25); }
+.days-sm .d-today i { background: transparent; box-shadow: inset 0 0 0 1px var(--signal); }
 .days-sm .d-today i::after { display: none; }
+.days-sm .d-missed i { background: var(--signal); opacity: .75; }
+.days-sm .d-fixed i { background: repeating-linear-gradient(to bottom, var(--paper) 0 2px, transparent 2px 4px); }
 
 /* ============ 我 ============ */
 .hero { position: relative; padding: 30px 0 6px; }
@@ -140,6 +144,28 @@ a { color: inherit; }
 .me-score { display: flex; align-items: flex-end; gap: 10px; margin-top: 12px; }
 .me-num { font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 168px; line-height: .74; letter-spacing: -.02em; margin-left: -5px; font-variant-numeric: tabular-nums; }
 .me-num.neg { color: var(--signal); }
+.me-num { position: relative; }
+.me-score { position: relative; }
+.me-score.lit .me-num { color: #fff3ec;
+  text-shadow: 0 0 1px rgba(255, 255, 255, .9), 0 0 7px rgba(255, 112, 72, .9), 0 0 20px rgba(255, 74, 31, .62), 0 0 46px rgba(255, 74, 31, .34), 0 0 90px rgba(255, 74, 31, .16);
+  animation: neonHum 8s linear infinite; }
+.me-score.lit .me-num.neg { color: #ffa284; }
+/* 燈管上的掃描線：只畫在數字裡面 */
+.me-score.lit .me-num::before { content: attr(data-text); position: absolute; left: 0; top: 0; color: transparent; text-shadow: none; pointer-events: none;
+  background: repeating-linear-gradient(to bottom, rgba(13, 13, 12, .42) 0 1px, transparent 1px 4px); -webkit-background-clip: text; background-clip: text; }
+/* 底下一條朱紅燈管 */
+.me-score.lit .me-num::after { content: ""; position: absolute; left: 6px; right: 2px; bottom: -14px; height: 2px; border-radius: 2px; background: var(--signal);
+  box-shadow: 0 0 6px var(--signal), 0 0 18px rgba(255, 74, 31, .55); transform-origin: left; }
+@keyframes neonHum { 0%, 100% { opacity: 1; } 2% { opacity: .82; } 2.6% { opacity: 1; } 51% { opacity: 1; } 51.5% { opacity: .9; } 52% { opacity: 1; } }
+.me-score.ignite .me-num::after { animation: tubeOn .9s .1s steps(1, end) both, tubeGrow .5s .1s var(--ease-out) both; }
+@keyframes tubeGrow { from { transform: scaleX(0); } }
+@keyframes tubeOn { 0% { opacity: 0; } 12% { opacity: 1; } 20% { opacity: .2; } 32% { opacity: 1; } 40% { opacity: .5; } 52% { opacity: 1; } }
+/* 通電時一道光由上往下刷過數字 */
+.me-score.ignite::before { content: ""; position: absolute; left: -8px; right: -8px; top: 0; z-index: 1; height: 3px; background: #fff; pointer-events: none;
+  box-shadow: 0 0 12px 2px var(--signal), 0 0 34px 6px rgba(255, 74, 31, .35); mix-blend-mode: screen; animation: neonScan .62s .18s var(--ease) both; }
+@keyframes neonScan { from { top: -4px; opacity: 1; } 85% { opacity: 1; } to { top: 100%; opacity: 0; } }
+/* 紅藍錯位的殘影（只在通電那一下） */
+.me-ghost { position: absolute; left: 0; top: 0; pointer-events: none; text-shadow: none; mix-blend-mode: screen; }
 .me-num.drop { animation: drop .7s var(--ease); }
 .me-num.rise { animation: rise .7s var(--ease); }
 @keyframes drop { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } }
@@ -351,6 +377,28 @@ a { color: inherit; }
 .all-seals li > small { margin-top: -6px; font-family: var(--f-num); font-stretch: 75%; font-weight: 600; font-size: 13px; color: var(--mute); }
 .s-all .cer-title { transition: color .4s; }
 .s-all.after .cer-title { color: var(--signal); }
+
+/* 今日第一：頭香印重重壓下，背後一圈放射光慢慢轉 */
+.cer-first { justify-items: start; }
+.first-mark { position: relative; width: 132px; height: 132px; margin: 14px 0 4px; display: grid; place-items: center; }
+.first-rays { position: absolute; left: 50%; top: 50%; width: 360px; height: 360px; margin: -180px 0 0 -180px; border-radius: 50%; opacity: 0; pointer-events: none;
+  background: repeating-conic-gradient(rgba(255, 74, 31, .22) 0 5deg, transparent 5deg 15deg);
+  -webkit-mask-image: radial-gradient(closest-side, #000 18%, transparent 100%); mask-image: radial-gradient(closest-side, #000 18%, transparent 100%); }
+.s-first.hit .first-rays { animation: raysIn .6s var(--ease-out) both, raysSpin 24s linear infinite; }
+@keyframes raysIn { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+@keyframes raysSpin { to { rotate: 360deg; } }
+.first-seal { --s: 112px; }
+.s-first.open .first-seal { animation: press .6s .38s var(--ease-out) both; }
+.s-first.hit .stage-inner { animation: quake .4s; }
+.first-team { font-size: 22px; font-weight: 900; letter-spacing: .06em; }
+.first-time { display: flex; align-items: baseline; gap: 10px; font-size: 14px; color: var(--mute); letter-spacing: .08em; }
+.first-time b { font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 40px; line-height: .8; color: var(--paper); letter-spacing: 0; }
+.s-first .cer-title { transition: color .4s; }
+.s-first.after .cer-title { color: var(--signal); }
+.s-first:not(.after) .first-team, .s-first:not(.after) .first-time, .s-first:not(.after) .cer-sub { opacity: 0; }
+.s-first.after .first-team { animation: fadeUp .45s var(--ease-out) both; }
+.s-first.after .first-time { animation: fadeUp .45s .08s var(--ease-out) both; }
+.s-first.after .cer-sub { animation: fadeUp .45s .16s var(--ease-out) both; }
 
 /* 完賽表 */
 .final-table { display: grid; margin-top: 10px; border-top: 1.5px solid var(--paper); }
