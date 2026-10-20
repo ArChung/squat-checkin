@@ -2,3 +2,4 @@
 worker-private/
 .weekly/
 __pycache__/
+private/
