@@ -214,6 +214,21 @@ a { color: inherit; }
 .league { scroll-margin-top: 14px; }
 .sec-label { display: flex; align-items: baseline; justify-content: space-between; margin-top: 56px; padding-bottom: 12px; border-bottom: 1.5px solid var(--paper); font-size: 13px; font-weight: 900; letter-spacing: .28em; }
 .sec-right { font-size: 11px; font-weight: 700; letter-spacing: .2em; color: var(--mute); }
+/* 今日｜昨天 切換 */
+.board-tabs { display: inline-flex; gap: 18px; }
+.board-tabs button { position: relative; padding: 2px 0 4px; font-size: 13px; font-weight: 900; letter-spacing: .28em; color: var(--dim); transition: color .2s; }
+.board-tabs button.on { color: var(--paper); }
+.board-tabs button.on::after { content: ""; position: absolute; left: 0; right: .28em; bottom: -13.5px; height: 2px; background: var(--signal); box-shadow: 0 0 8px rgba(255, 74, 31, .6); }
+.board-note { margin-top: 12px; font-size: 12.5px; letter-spacing: .08em; color: var(--mute); }
+.t-time { margin-left: -2px; font-family: var(--f-num); font-stretch: 75%; font-weight: 600; font-size: 13px; letter-spacing: .02em; color: var(--mute); }
+.t-score.t-done { font-size: 28px; line-height: 1; padding-top: 6px; }
+.team.pending .t-score.t-done { color: var(--line-2); }
+/* 切換時卡片依序滑進來 */
+.board-in .team, .board-in .board-note { animation: boardIn .42s var(--ease-out) both; }
+.board-in .team:nth-of-type(1) { animation-delay: .04s; }
+.board-in .team:nth-of-type(2) { animation-delay: .1s; }
+.board-in .team:nth-of-type(3) { animation-delay: .16s; }
+@keyframes boardIn { from { opacity: 0; transform: translateX(18px); } }
 .team { position: relative; display: grid; grid-template-columns: 46px 1fr auto; column-gap: 12px; margin-top: 10px; padding: 17px 16px 15px 14px; border-radius: 4px; background: var(--tint, var(--ink-2)); overflow: hidden; }
 .team.mine::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--signal); }
 .team.pending .t-rank { color: var(--line-2); }

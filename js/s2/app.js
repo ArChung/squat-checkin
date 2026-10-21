@@ -74,6 +74,8 @@
   let autoClaimTried = false;
   let entryPending = true;   // 這次是剛打開／剛切回來：全員達成的話再放一次慶祝
   let heroHTML = "";
+  let board = "today";      // 排行看哪一天：today＝今日、y＝昨天
+  let boardSwitch = false;   // 剛切換今日／昨天：這次重畫不做抽換動畫
 
   /* ---------- 小零件 ---------- */
   const DAY_LABEL = { done: "有蹲", future: "還沒到", today: "今天還沒蹲", missed: "漏了，扣 10 分", fixed: "補回來了" };
@@ -387,9 +389,60 @@
   }
 
 
+  /* 昨天的排行：誰先兩人都蹲完、各自幾點、昨晚的嗆聲和愛心（自己的嗆聲不能再改） */
+  function renderYesterday(v) {
+    const y = S2.addDays(today, -1);
+    const yc = ck()[y] || {};
+    const ts = (x) => (yc[x] ? Number(yc[x].ts) || 1 : 0);
+    const w = S2.weekIdx(y);
+    const list = S.teams.map((team, idx) => {
+      const times = team.members.map(ts);
+      const doneN = times.filter(Boolean).length;
+      return {
+        team, idx, doneN,
+        doneAt: doneN === team.members.length ? Math.max(...times) : Infinity,
+        firstAt: doneN ? Math.min(...times.filter(Boolean)) : Infinity,
+        people: team.members.map((m) => S2.personWeek(ck(), m, w, today))
+      };
+    }).sort((a, b) => (a.doneAt - b.doneAt) || (b.doneN - a.doneN) || (a.firstAt - b.firstAt) || (a.idx - b.idx));
+    let n = 0;
+    list.forEach((x) => { x.rank = x.doneAt < Infinity ? ++n : 0; });
+    const total = ORDER.filter((x) => yc[x]).length;
+    pendingReorder = false;
+
+    $("#stalls").innerHTML = `<p class="board-note">${dayLabel(y)}・${total === ORDER.length ? "全員達成" : `${total}/${ORDER.length} 人蹲了`}</p>` + list.map((x) => {
+      const mine = x.team.members.indexOf(v.me) >= 0;
+      const people = x.people.map((p) => {
+        const msg = (msgs()[y] || {})[p.id];
+        const lk = (likes()[y] || {})[p.id] || {};
+        const cnt = Object.keys(lk).length;
+        const liked = !!(v.me && lk[v.me]);
+        const canLike = v.me && p.id !== v.me;
+        const heart = `<span class="likes ${cnt ? "has" : ""} ${liked ? "on" : ""} ${likeBurst === p.id ? "burst" : ""}">` +
+          `${HEART}${cnt ? `<b>×${cnt}</b>` : ""}${likeBurst === p.id ? pixels() : ""}</span>`;
+        const act = canLike ? `data-act="like" data-target="${p.id}" data-date="${y}" aria-pressed="${liked}"` : `tabindex="-1"`;
+        const quote = msg ? `<button class="t-quote" type="button" ${act} aria-label="${esc(name(p.id))}昨天的嗆聲，${cnt} 顆愛心">「${esc(msg.text)}」${heart}</button>` : "";
+        const r = yc[p.id];
+        const seal = r ? `<i class="mini-seal on" aria-label="昨天蹲了"></i><small class="t-time">${ts(p.id) > 1 ? S2.hm(r.ts) : ""}${r.makeup ? " 補" : ""}</small>` : "";
+        return `<div class="t-member"><span class="t-who">${esc(name(p.id))}${seal}</span>${bulbsHTML(p, { cls: "days-sm" })}${quote}</div>`;
+      }).join("");
+      return `<article class="team ${mine ? "mine" : ""} ${x.rank === 1 ? "rank-1" : ""} ${x.rank ? "" : "pending"}" data-team="${x.team.id}" style="--tint:${x.team.color}">
+        <div class="t-rank">${x.rank ? two(x.rank) : "—"}</div>
+        <div class="t-body">${people}</div>
+        <div class="t-score t-done">${x.doneAt < Infinity && x.doneAt > 1 ? S2.hm(x.doneAt) : "—"}</div>
+      </article>`;
+    }).join("");
+  }
+
   function renderStalls(v) {
-    $("#stallsTitle").innerHTML = v.ph === "on" ? `<span>今日排行</span><span class="sec-right">本週分</span>`
+    const hasY = v.ph === "on" && S2.addDays(today, -1) >= S.start;
+    if (!hasY) board = "today";
+    const tabs = `<span class="board-tabs" role="tablist">${[["today", "今日"], ["y", "昨天"]].map(([k, lbl]) =>
+      `<button type="button" role="tab" data-board="${k}" aria-selected="${board === k}" class="${board === k ? "on" : ""}">${lbl}</button>`).join("")}</span>`;
+    $("#stallsTitle").innerHTML = v.ph === "on"
+      ? (hasY ? tabs : `<span>今日排行</span>`) + `<span class="sec-right">${board === "y" ? "兩人蹲完" : "本週分"}</span>`
       : v.ph === "pre" ? `<span>夫妻三隊</span>` : `<span>最後一週</span><span class="sec-right">分數</span>`;
+    if (board === "y") { renderYesterday(v); return; }
     const dow = S2.wd(today);
 
     let list = v.order;
@@ -434,6 +487,16 @@
       </article>`;
     }).join("");
   }
+
+  $("#stallsTitle").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-board]");
+    if (!b || b.dataset.board === board) return;
+    board = b.dataset.board;
+    boardSwitch = true;
+    renderAll();
+    const s = $("#stalls");
+    s.classList.remove("board-in"); void s.offsetWidth; s.classList.add("board-in");
+  });
 
   /* ---------- 明日運勢：蓋完章直接整頁跳出來 ---------- */
   function openFortune(D) {
@@ -483,6 +546,7 @@
 
   function afterStamp(id) {
     stampFlow = true;
+    board = "today";
     const t0 = Date.now();
     const finish = () => {
       stampFlow = false;
@@ -983,10 +1047,11 @@
     else if (act === "fortune") openFortune(t.dataset.date);
     else if (act === "like") {
       const target = t.dataset.target;
-      const on = !(((likes()[today] || {})[target]) || {})[id];
+      const day = t.dataset.date || today;
+      const on = !(((likes()[day] || {})[target]) || {})[id];
       likeBurst = on ? target : null;
       if (on) Sfx.like(); else Sfx.unlike();
-      store().like(today, target, id, on).catch(() => { likeBurst = null; fail("愛心送不出去，網路好像不太順，再試一次。"); });
+      store().like(day, target, id, on).catch(() => { likeBurst = null; fail("愛心送不出去，網路好像不太順，再試一次。"); });
     }
     else if (act === "undo") {
       openSheet({
@@ -1146,7 +1211,8 @@
       return;
     }
     const v = buildView();
-    const flips = captureFlip();
+    const flips = boardSwitch ? {} : captureFlip();
+    boardSwitch = false;
     renderHeader(v);
     renderReport(v);
     renderHero(v);
@@ -1187,6 +1253,7 @@
     const k = S2.dateKey();
     if (k === today) return;
     today = k;
+    board = "today";
     prevDone = {}; prevWeekend = {}; prevFixed = {};
     firstRender = true;
     renderAll();
