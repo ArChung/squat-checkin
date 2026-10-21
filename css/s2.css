@@ -140,7 +140,9 @@ a { color: inherit; }
 .hero { position: relative; padding: 30px 0 6px; }
 .me-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; }
 .me-name { white-space: nowrap; font-size: 26px; font-weight: 900; letter-spacing: .08em; }
-.me-label { margin-top: 22px; font-size: 12px; font-weight: 700; letter-spacing: .3em; color: var(--mute); }
+.me-label { margin-top: 22px; font-size: 12px; font-weight: 700; letter-spacing: .3em; color: var(--mute); display: flex; align-items: baseline; justify-content: space-between; }
+.me-more { font-size: 11.5px; font-weight: 700; letter-spacing: .14em; color: var(--mute); padding: 4px 0 4px 12px; }
+.days[data-act] { cursor: pointer; -webkit-tap-highlight-color: transparent; }
 .me-score { display: flex; align-items: flex-end; gap: 10px; margin-top: 12px; }
 .me-num { font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 168px; line-height: .74; letter-spacing: -.02em; margin-left: -5px; font-variant-numeric: tabular-nums; }
 .me-num.neg { color: var(--signal); }
@@ -513,6 +515,25 @@ a { color: inherit; }
 .rc-teams .rk { font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 22px; color: var(--dim); }
 .rc-teams li.mine .rk { color: var(--signal); }
 .rc-teams b { font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 24px; }
+
+/* ============ 本季總表（首頁展開、週報頁） ============ */
+.sg { display: grid; gap: 4px; margin-top: 14px; }
+.sg-row { display: grid; grid-template-columns: 50px repeat(7, 1fr) 54px; align-items: center; gap: 5px; padding: 7px 8px; border-radius: 3px; color: inherit; text-decoration: none; }
+.sg-head { padding-top: 0; padding-bottom: 2px; font-size: 11px; color: var(--dim); text-align: center; }
+.sg-head span:last-child { text-align: right; }
+.sg-row .d i { height: 22px; }
+.sg-row.future .d i { border-color: var(--line); }
+.sg-row.cur { background: rgba(255, 74, 31, .08); box-shadow: inset 2px 0 0 var(--signal); }
+.sg-wk { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--mute); white-space: nowrap; }
+.sg-row.cur .sg-wk { color: var(--paper); }
+.sg-row.link .sg-wk::after { content: " ›"; color: var(--signal); }
+.sg-row.link:active { background: var(--ink-2); }
+.sg-score { text-align: right; font-family: var(--f-num); font-stretch: 62%; font-weight: 800; font-size: 24px; line-height: 1; font-variant-numeric: tabular-nums; }
+.sg-score.neg { color: var(--signal); }
+.sg-score.sg-none { color: var(--line-2); }
+.sg-score small { display: block; margin-top: 2px; font-family: var(--f-zh); font-size: 9.5px; font-weight: 700; letter-spacing: .2em; color: var(--signal); }
+.sg-sum { margin-top: 14px; font-size: 13px; letter-spacing: .06em; color: var(--mute); }
+.sg-sum b { font-family: var(--f-num); font-stretch: 75%; font-size: 16px; color: var(--paper); margin: 0 2px; }
 .letter { padding: 26px 22px 24px; color: var(--print); background: var(--paper); }
 .letter .blk-label { color: #6e6c66; border-color: rgba(20, 20, 19, .2); }
 .lt-text { margin-top: 16px; font-family: var(--f-serif); font-weight: 500; font-size: 18px; line-height: 2; letter-spacing: .02em; }

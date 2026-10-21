@@ -56,10 +56,25 @@
         `<li><a href="?w=${rep.week}&p=${id}">${esc(name(id))}</a></li>`).join("")}</ul>`);
       return;
     }
-    render(rep, index, (horo && horo.signs[me]) || "");
+    /* 本季總表要用到之前每一週的週報 */
+    const others = DEMO ? [] : await Promise.all((index.weeks || [])
+      .filter((x) => x.week !== rep.week && x.week <= S.weeks).map((x) => getJSON(`data/reports/w${x.week}.json`)));
+    render(rep, index, (horo && horo.signs[me]) || "", [rep].concat(others.filter(Boolean)));
   }
 
-  function render(rep, index, sign) {
+  function seasonRows(all, rep) {
+    const byWeek = {};
+    all.forEach((r) => { if (r && r.people && r.people[me]) byWeek[DEMO ? 1 : r.week] = r; }); // 範例只有一週，放在第 1 週
+    const qp = (q.get("p") ? "&p=" + q.get("p") : "");
+    return Array.from({ length: S.weeks }, (_, i) => {
+      const k = i + 1, r = byWeek[k];
+      if (!r) return { week: k, days: Array(7).fill("future"), score: null };
+      const cur = DEMO ? k === 1 : k === rep.week;
+      return { week: k, days: r.people[me].days, score: r.people[me].score, current: cur, href: cur ? null : `?w=${k}${qp}` };
+    });
+  }
+
+  function render(rep, index, sign, all) {
     const p = rep.people[me];
     const glyph = GLYPH[sign] ? GLYPH[sign] + "\uFE0E" : "";
     const seenKey = `squat-s2-letter-${DEMO ? "demo-" : ""}${rep.week}-${me}`;
@@ -108,6 +123,11 @@
             <div><dt>補蹲卡</dt><dd>${p.makeup === "used" ? "已使用" : "未使用"}</dd></div>
           </dl>
           <ol class="rc-teams">${teams}</ol>
+        </section>
+
+        <section class="season-card">
+          <p class="blk-label">本季總表</p>
+          ${SeasonGrid.html(seasonRows(all || [rep], rep), S.weekBase || 0, "")}
         </section>
 
         <section class="letter">

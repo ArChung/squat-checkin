@@ -84,7 +84,8 @@
   const dot = (k) => S2.md(k).replace("/", ".");
 
   function bulbsHTML(pw, o) {
-    return `<ol class="days ${o.cls || ""}">${pw.days.map((d, i) => {
+    const act = o.act ? ` data-act="${o.act}" role="button" tabindex="0" aria-label="看本季總表"` : "";
+    return `<ol class="days ${o.cls || ""}"${act}>${pw.days.map((d, i) => {
       const fixing = o.fixAnim && d.key === o.fixAnim ? " d-fixing" : "";
       return `<li class="d d-${d.state}${fixing}" style="--i:${i}" aria-label="週${WD[i]}：${DAY_LABEL[d.state]}"><i></i><span>${WD[i]}</span></li>`;
     }).join("")}</ol>`;
@@ -285,7 +286,7 @@
       const total = scores.reduce((a, b) => a + b, 0);
       el.innerHTML = `
         <div class="me-head"><h2 class="me-name">${esc(name(id))}</h2></div>
-        <p class="me-label">六週合計</p>
+        <p class="me-label">六週合計<button class="me-more" type="button" data-act="table">總表 →</button></p>
         <div class="me-score"><span class="me-num ${neg(total, BASE * S.weeks)}">${fmt(total)}</span><span class="me-unit">分</span></div>
         <ol class="wk-list">${scores.map((sc, i) => `<li><span>第 ${i + 1} 週</span><b>${fmt(sc)}</b></li>`).join("")}</ol>`;
       return;
@@ -314,9 +315,9 @@
       <div class="me-head"><h2 class="me-name">${esc(name(id))}</h2>
         ${mk === "ok" && !r ? `<button class="chip-makeup" type="button" data-act="ticket">補蹲卡・補昨天</button>` : ""}</div>
       ${r ? sealHTML("蹲", "seal-me") : ""}
-      <p class="me-label">本週分數</p>
+      <p class="me-label">本週分數<button class="me-more" type="button" data-act="table">總表 →</button></p>
       <div class="me-score ${r ? "lit" : ""}"><span class="me-num ${neg(pw.score)}" data-count="me" data-val="${pw.score}" data-text="${fmt(pw.score)}">${fmt(pw.score)}</span><span class="me-unit">分</span></div>
-      ${bulbsHTML(pw, { cls: "days-lg" + (v.relight ? " relight" : ""), fixAnim: v.fixAnim })}
+      ${bulbsHTML(pw, { cls: "days-lg" + (v.relight ? " relight" : ""), fixAnim: v.fixAnim, act: "table" })}
       <div class="act">${act}</div>`;
     if (html !== heroHTML) { el.innerHTML = html; heroHTML = html; }
     if (r && v.just[id]) {
@@ -488,6 +489,11 @@
     }).join("");
   }
 
+  /* 可以點的七格：鍵盤按 Enter／空白鍵也能打開 */
+  document.addEventListener("keydown", (e) => {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); }
+  });
+
   $("#stallsTitle").addEventListener("click", (e) => {
     const b = e.target.closest("[data-board]");
     if (!b || b.dataset.board === board) return;
@@ -603,6 +609,34 @@
     if (next) { ceremonyBusy = true; next(); return; }
     closeStage();
     setTimeout(runCeremonies, wait || 900);
+  }
+
+  /* 本季總表：一週一列，七格＋分數；有週報的那週點了就去看週報 */
+  function showTable(id) {
+    const ph = S2.phase(today);
+    const end = ph === "post" ? S2.addDays(S2.END, 1) : today;
+    const has = new Set(((reports && reports.weeks) || []).map((x) => x.week));
+    const rows = Array.from({ length: S.weeks }, (_, w) => {
+      if (S2.weekStart(w) > end) return { week: w + 1, days: Array(7).fill("future"), score: null };
+      const pw = S2.personWeek(ck(), id, w, end);
+      return {
+        week: w + 1, days: pw.days.map((d) => d.state), score: pw.score,
+        current: ph === "on" && w === S2.weekIdx(today),
+        href: has.has(w + 1) ? `week.html?w=${w + 1}` : null
+      };
+    });
+    ceremonyBusy = true;
+    stage(`<div class="cer cer-table">
+      <p class="cer-kicker">Season 2</p>
+      <h2 class="cer-title">${esc(name(id))}的總表</h2>
+      ${SeasonGrid.html(rows, BASE)}
+      <div class="cer-btns"><button class="btn-primary paper" type="button" data-cer="ok">收起來</button></div>
+    </div>`, "s-table");
+    $("#stageInner").querySelector('[data-cer="ok"]').onclick = () => {
+      ceremonyBusy = false;
+      closeStage();
+      setTimeout(runCeremonies, 900);
+    };
   }
 
   function showRules(id, first) {
@@ -1045,6 +1079,7 @@
     if (act === "stamp") openStamp(id, false);
     else if (act === "makeup-after") openMakeupAfter(id);
     else if (act === "fortune") openFortune(t.dataset.date);
+    else if (act === "table") showTable(id);
     else if (act === "like") {
       const target = t.dataset.target;
       const day = t.dataset.date || today;

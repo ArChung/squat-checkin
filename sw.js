@@ -21,6 +21,7 @@ const CORE = [
   "js/s2/colors.js",
   "js/s2/sound.js",
   "js/s2/fx.js",
+  "js/s2/grid.js",
   "js/s2/demo.js",
   "js/s2/app.js",
   "js/s2/week.js",
