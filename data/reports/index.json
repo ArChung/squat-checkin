@@ -1,1 +1,10 @@
-{ "weeks": [], "latest": null }
+{
+  "weeks": [
+    {
+      "week": 1
+    }
+  ],
+  "latest": {
+    "week": 1
+  }
+}
