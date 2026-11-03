@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>書屋短影音成效報告</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Noto+Serif+TC:wght@600;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f7f2ea; --card:#fffdf9; --ink:#2b2420; --muted:#7a6e64; --line:#e6dccf;
+  --accent:#c8553d; --accent-soft:#f3dcd3; --green:#5b7f5a; --green-soft:#dfe9dc; --bar-bg:#efe6da;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#1d1a17; --card:#262220; --ink:#f1ebe4; --muted:#b0a59a; --line:#3a332e;
+    --accent:#e2775f; --accent-soft:#4a2c24; --green:#8fb38c; --green-soft:#2c3a2b; --bar-bg:#332d29;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Noto Sans TC",system-ui,sans-serif;line-height:1.75;font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:40px 16px 72px}
+header{padding:24px 0 8px}
+.eyebrow{font-size:13px;letter-spacing:.12em;color:var(--accent);font-weight:700}
+h1{font-family:"Noto Serif TC",serif;font-weight:900;font-size:clamp(28px,6vw,44px);line-height:1.25;margin:8px 0 12px}
+.sub{color:var(--muted);margin:0}
+h2{font-family:"Noto Serif TC",serif;font-size:24px;margin:56px 0 16px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+h3{font-size:17px;margin:0 0 4px}
+p{margin:0 0 14px}
+.hero{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-top:28px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.stat .n{font-family:"Noto Serif TC",serif;font-size:32px;font-weight:900;line-height:1.1;color:var(--accent)}
+.stat .l{font-size:14px;color:var(--muted);margin-top:6px}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.reel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.reel .date{font-size:13px;color:var(--muted)}
+.reel a{color:var(--accent);font-weight:500;text-decoration:none}
+.reel a:hover{text-decoration:underline}
+table{width:100%;border-collapse:collapse;margin-top:12px;font-size:15px}
+td{padding:7px 0;border-bottom:1px dashed var(--line)}
+td:last-child{text-align:right;font-variant-numeric:tabular-nums;font-weight:500}
+tr:last-child td{border-bottom:none}
+.compare{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.row{margin:14px 0}
+.row .lab{display:flex;justify-content:space-between;font-size:14px;margin-bottom:4px}
+.row .lab span:last-child{font-variant-numeric:tabular-nums;color:var(--muted)}
+.bar{height:12px;border-radius:6px;background:var(--bar-bg);overflow:hidden}
+.bar i{display:block;height:100%;border-radius:6px;background:var(--accent)}
+.bar i.b{background:var(--green)}
+.bar i.c{background:var(--muted);opacity:.55}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin-bottom:6px}
+.legend b{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.insight{display:grid;gap:12px}
+.insight div{background:var(--card);border-left:4px solid var(--accent);border-radius:0 12px 12px 0;padding:14px 18px}
+.quotes{columns:2 280px;column-gap:14px}
+.q{break-inside:avoid;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 14px}
+.q p{margin:0 0 6px}
+.q .who{font-size:12px;color:var(--muted)}
+.q.act{border-color:var(--green);background:var(--green-soft)}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);margin-right:6px;font-weight:500}
+.q.act .tag{background:var(--card);color:var(--green)}
+.themes{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px}
+.themes div{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.note{font-size:13px;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-top:20px}
+ol{padding-left:20px}
+li{margin-bottom:10px}
+footer{margin-top:56px;font-size:13px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">強強滾一家 × 孩子的書屋</div>
+  <h1>兩支書屋短影音<br>帶來的迴響</h1>
+  <p class="sub">Instagram @strongstrongroll Reels 成效報告｜數據截至 2026 年 11 月 3 日</p>
+</header>
+
+<section class="hero">
+  <div class="stat"><div class="n">73.2 萬</div><div class="l">總觀看次數</div></div>
+  <div class="stat"><div class="n">50 萬</div><div class="l">觸及帳號（兩支加總）</div></div>
+  <div class="stat"><div class="n">5.3 萬</div><div class="l">按讚</div></div>
+  <div class="stat"><div class="n">近 2 萬</div><div class="l">分享＋轉發</div></div>
+  <div class="stat"><div class="n">5,263</div><div class="l">收藏</div></div>
+  <div class="stat"><div class="n">673</div><div class="l">留言</div></div>
+</section>
+
+<h2>兩支影片的數據</h2>
+<div class="cards">
+  <article class="reel">
+    <div class="date">10 月 14 日 發佈｜與 @kidsbookhouse1999 共同發佈</div>
+    <h3>「那十天我的資訊量真的很大」</h3>
+    <a href="https://www.instagram.com/reel/DeeZZwGzwR_/" target="_blank" rel="noopener">觀看影片 →</a>
+    <table>
+      <tr><td>觀看次數</td><td>202,908</td></tr>
+      <tr><td>觸及帳號</td><td>124,636</td></tr>
+      <tr><td>按讚</td><td>12,440</td></tr>
+      <tr><td>留言</td><td>259</td></tr>
+      <tr><td>分享</td><td>2,640</td></tr>
+      <tr><td>轉發（Repost）</td><td>761</td></tr>
+      <tr><td>收藏</td><td>653</td></tr>
+      <tr><td>互動率（互動 ÷ 觸及）</td><td>12.8%</td></tr>
+      <tr><td>平均觀看時間</td><td>28.1 秒</td></tr>
+      <tr><td>平均看完比例</td><td>42.7%</td></tr>
+    </table>
+  </article>
+  <article class="reel">
+    <div class="date">10 月 20 日 發佈</div>
+    <h3>「因為好奇孩子的書屋，我帶一家四口生活了 10 天」</h3>
+    <a href="https://www.instagram.com/reel/DetZSmMR7MP/" target="_blank" rel="noopener">觀看影片 →</a>
+    <table>
+      <tr><td>觀看次數</td><td>528,833</td></tr>
+      <tr><td>觸及帳號</td><td>375,180</td></tr>
+      <tr><td>按讚</td><td>40,165</td></tr>
+      <tr><td>留言</td><td>414</td></tr>
+      <tr><td>分享</td><td>11,738</td></tr>
+      <tr><td>轉發（Repost）</td><td>4,515</td></tr>
+      <tr><td>收藏</td><td>4,610</td></tr>
+      <tr><td>互動率（互動 ÷ 觸及）</td><td>15.2%</td></tr>
+      <tr><td>平均觀看時間</td><td>29.6 秒</td></tr>
+      <tr><td>平均看完比例</td><td>45.8%</td></tr>
+    </table>
+  </article>
+</div>
+
+<h2>跟同期一般影片比起來</h2>
+<p>為了看出書屋影片的表現，拿同一週帳號上另一支生活類 Reels（10/23 颱風居家影片，觀看 9.1 萬）當參照。每個指標都換算成「每觸及 100 人」，排除觸及規模的差異。</p>
+<div class="compare">
+  <div class="legend"><span><b style="background:var(--accent)"></b>10/20 書屋</span><span><b style="background:var(--green)"></b>10/14 書屋</span><span><b style="background:var(--muted);opacity:.55"></b>10/23 一般影片</span></div>
+
+  <div class="row"><div class="lab"><span>互動率</span><span>15.2% ／ 12.8% ／ 7.0%</span></div>
+    <div class="bar"><i style="width:100%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="b" style="width:84%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="c" style="width:46%"></i></div></div>
+
+  <div class="row"><div class="lab"><span>分享率（每 100 位觸及者分享幾次）</span><span>3.1 ／ 2.1 ／ 0.3</span></div>
+    <div class="bar"><i style="width:100%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="b" style="width:68%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="c" style="width:9%"></i></div></div>
+
+  <div class="row"><div class="lab"><span>收藏率（每 100 位觸及者收藏幾次）</span><span>1.23 ／ 0.52 ／ 0.07</span></div>
+    <div class="bar"><i style="width:100%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="b" style="width:42%"></i></div>
+    <div class="bar" style="margin-top:4px"><i class="c" style="width:6%"></i></div></div>
+</div>
+
+<h2>數據告訴我們的事</h2>
+<div class="insight">
+  <div><strong>大家不只看，還主動轉給別人。</strong>兩支加起來被分享 14,378 次、轉發 5,276 次。書屋影片的分享率是同期一般影片的 7～11 倍，代表觀眾覺得「這個要讓更多人知道」。</div>
+  <div><strong>很多人收藏起來，打算之後再回來。</strong>5,263 次收藏，10/20 那支的收藏率是一般影片的十幾倍。收藏常見的意思是「之後要再看、要去查、要去捐」。</div>
+  <div><strong>第二支觸及是第一支的 3 倍。</strong>第二支在開頭加了一句「因為好奇孩子的書屋，我帶一家四口跟他們生活了 10 天」，先交代是誰、為什麼去。觸及從 12.5 萬升到 37.5 萬，互動率也從 12.8% 升到 15.2%。開頭說清楚來龍去脈，可能讓更多不認識書屋的人願意看下去。</div>
+  <div><strong>看得夠久，故事有被聽進去。</strong>平均每人看約 29 秒、看完四成多的內容，在短影音裡屬於願意停下來聽的程度。</div>
+</div>
+
+<h2>留言裡的聲音</h2>
+<p>兩支共 673 則留言。整體讀下來，可以分成這幾類：</p>
+<div class="themes">
+  <div><span class="tag">感動</span>最大宗。很多人說「看到哭」「眼眶紅了」「這裡有洋蔥」。</div>
+  <div><span class="tag">行動</span>有人看完直接去捐款，也有人辦了定期小額捐款。</div>
+  <div><span class="tag">感謝認識</span>不少人表示是因為影片才第一次知道書屋。</div>
+  <div><span class="tag">共鳴與思考</span>有人去過書屋、有人談到教育擴張的困難與陪伴式照顧。</div>
+</div>
+
+<div class="quotes">
+  <div class="q act"><p><span class="tag">捐款</span>看了阿忠感人的介紹，立馬轉頭去捐款！真的</p><div class="who">_im_w***｜10/14 影片</div></div>
+  <div class="q act"><p><span class="tag">定期捐款</span>謝謝你讓我認識這個團體，我也真的辦定期小額捐款，希望為團隊盡一點點心力，接住孩子！</p><div class="who">fengyi***｜10/14 影片</div></div>
+  <div class="q"><p>真的超感動有這群人在做這麼溫暖又不求回報的事情！希望這個暖可以再帶到更多的社區和一直傳到下下下下代～</p><div class="who">dereknel***｜10/14 影片</div></div>
+  <div class="q"><p>謝謝你分享這麼棒的地方🌱 教育真的很難擴張，也有很多現實層面制度的不容易，沒想到有人這麼用心的修補！</p><div class="who">mimi19***｜10/14 影片</div></div>
+  <div class="q"><p>天啊～被你的激動所感動🥹 陪伴式的照顧滿足孩子的需求真的很令人動容❤️ 謝謝書屋</p><div class="who">mimom_***｜10/14 影片</div></div>
+  <div class="q"><p>九月去過，真的歎為觀止</p><div class="who">penguin***｜10/14 影片</div></div>
+  <div class="q"><p>好感動喔！！光聽你講我就流淚了</p><div class="who">cj_chen***｜10/20 影片</div></div>
+  <div class="q"><p>看影片好感動，看到眼眶都紅了</p><div class="who">qob123***｜10/20 影片</div></div>
+  <div class="q"><p>我也嚮往😢</p><div class="who">9000_***｜10/20 影片</div></div>
+  <div class="q"><p>台灣人真的好棒~~</p><div class="who">ben36***｜10/20 影片</div></div>
+  <div class="q"><p>我的天啊 好感動喔 必須支持！</p><div class="who">wewee_***｜10/14 影片</div></div>
+  <div class="q"><p>聽完都要流淚了啦，這裡有洋蔥</p><div class="who">bracha***｜10/20 影片</div></div>
+</div>
+
+<div class="note">為保護留言者，帳號名稱已部分遮蔽。本頁節錄的是 Instagram 公開頁面上可見的留言，不是全部 673 則；數據由 Metricool 取得，觸及帳號為兩支各自加總，可能有重複的人。</div>
+
+<h2>可以接著做的事</h2>
+<ol>
+  <li><strong>回應留言裡的行動派。</strong>已經有人說去捐款、辦定期定額，書屋帳號若能到留言區道謝，會讓更多潛在捐款者看見。</li>
+  <li><strong>把捐款入口放在好找的地方。</strong>很多人收藏影片、表示「必須支持」，在書屋 IG 簡介和官網首頁放清楚的捐款連結，能接住這些人。</li>
+  <li><strong>延伸完整的故事。</strong>影片只講得完一部分，夏日只想躺在家 EP97 有負責人的完整訪談，可以一起推薦給看完影片想了解更多的人。</li>
+</ol>
+
+<footer>報告製作：強強滾一家 阿忠｜資料期間 2026/10/14–2026/11/03</footer>
+</div>
+</body>
+</html>
